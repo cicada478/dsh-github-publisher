@@ -1268,6 +1268,29 @@ def test_rel001_flags_artifacts_without_checksum(sandbox: Path) -> None:
 
 
 @test
+def test_python_version_guard(sandbox: Path) -> None:
+    """版本守卫的判据本身要被验证。
+
+    否则「解释器太旧」这条路径只能靠真去找一个旧解释器来覆盖，
+    实际上等于没测——而它恰恰是使用者最容易撞上、也最容易被误判的一条：
+    报错看起来像脚本有 bug，真实原因却是解释器不对。
+    """
+    check_eq(_common.MIN_PYTHON, (3, 9), "最低版本应声明为 3.9")
+    for supported in ((3, 9), (3, 13), (3, 14), (4, 0)):
+        check(
+            _common.python_version_supported(supported),
+            "Python {0}.{1} 应受支持".format(*supported),
+        )
+    for unsupported in ((2, 7), (3, 6), (3, 8)):
+        check(
+            not _common.python_version_supported(unsupported),
+            "Python {0}.{1} 不应受支持".format(*unsupported),
+        )
+    # 当前解释器必须通过守卫，否则本次自检根本跑不起来
+    check(_common.python_version_supported(), "当前解释器应满足最低版本要求")
+
+
+@test
 def test_id001_detects_contradicting_stale_report(sandbox: Path) -> None:
     audit_dir = sandbox / _common.AUDIT_DIRNAME
     write_text(

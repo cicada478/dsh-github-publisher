@@ -74,6 +74,21 @@ DSH scans these skill roots in priority order:
 
 The **project root** is the nearest ancestor containing `.git`; without one, the current working directory is used.
 
+### Requirements
+
+| Dependency | Requirement | Notes |
+|---|---|---|
+| **Python** | **3.9 or newer** | The scripts use the standard library only — **install no third-party packages**. CI verifies 3.9 / 3.13 / 3.14 |
+| git | any recent version | Both the audit and the upload need it |
+| gh (GitHub CLI) | only for publishing | The audit itself does not need it |
+| gitleaks / trufflehog | **optional** | Without them the scan falls back to the built-in rules, coverage drops, and the report says so |
+
+**On the location of the `python` command.** Every example in this repository writes `python ...`, but that is a convention rather than a guarantee — on another machine it may be `python3`, `py -3`, or absent from `PATH` entirely (on Linux and macOS `python` may even still be Python 2).
+
+The scripts therefore **exit with code 2** on an interpreter older than 3.9 and state which interpreter they actually received, rather than failing somewhere deeper with an error unrelated to the real cause. Take the first of `python` → `python3` → `py -3` that reports 3.9 or newer, and use that same interpreter throughout a run.
+
+If none of them qualifies, a DSH deployment can obtain its own Python from `load_workspace_dependencies` — that is the only interpreter path guaranteed to exist in a DSH environment.
+
 ### Option 1: project-scoped
 
 Place the skill directory under the target project's `.dsh/skills/`. Project-scoped skills should be committed so that collaborators get them on clone.

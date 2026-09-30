@@ -32,8 +32,10 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # 3.9 用于验证 CONTRIBUTING 声明的「Python 3.9+」确实成立
-        python-version: ['3.9', '3.13']
+        # 3.9 验证 CONTRIBUTING 声明的「Python 3.9+」下界确实成立；
+        # 3.14 是当前最新稳定版，用于提前发现上界问题——
+        # 只在旧版本上验证，等于假定新版本不会破坏任何东西。
+        python-version: ['3.9', '3.13', '3.14']
 
     steps:
       - name: 检出（需完整历史）

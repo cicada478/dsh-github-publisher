@@ -121,6 +121,20 @@ gh repo create <name> --private --source=<path> --remote=origin --push
 
 Confirm the repository is private after creation (`gh repo view --json visibility`). Verify the pushed remote before announcing success — a local commit is not evidence that a push landed.
 
+**If a push fails with a TLS error under DSH's file sandbox.** Windows git defaults to the `schannel` backend, which cannot acquire credentials in a confined session:
+
+```text
+schannel: AcquireCredentialsHandle failed: SEC_E_NO_CREDENTIALS (0x8009030E)
+```
+
+This is a property of the confined environment, not of the machine — the same command succeeds outside DSH, and `gh` is unaffected because it uses Go's own TLS stack. Point git at OpenSSL **for this repository only**:
+
+```text
+git config --local http.sslBackend openssl
+```
+
+A credential helper written as `!<command>` also needs git to spawn a shell, which the same confinement blocks (`couldn't create signal pipe`). That step needs the user to approve wider access — ask, rather than routing around it. **Do not put a token in the remote URL to bypass the helper**: the token would then live in `.git/config`, in the shell history, and in this session's record.
+
 ### 7. Post-upload verification
 
 Re-check the remote: visibility is still `private`, the pushed commit's author and committer are both noreply, and no BLOCKER-class file reached the remote history. If any fails, say so immediately and stop.
@@ -164,6 +178,17 @@ Resolve paths relative to this skill's base directory, which the `skill` tool re
 | `scripts/selftest.py` | Self-test; runs in temporary directories |
 
 They use the Python standard library only. Do not install packages for them.
+
+**Version requirement and finding an interpreter.** They need **Python 3.9 or newer**. On anything older they exit with code `2` and a message naming the interpreter they actually got, rather than failing somewhere deeper with an error that has nothing to do with the real cause.
+
+`python` is not guaranteed to exist, and is not guaranteed to be the version you expect — on Linux and macOS it may be absent, or may still be Python 2. Resolve an interpreter **before** running anything, trying in order:
+
+1. `python`
+2. `python3`
+3. `py -3` (the Windows launcher)
+4. the Python returned by `load_workspace_dependencies` — DSH supplies one, and it is the only path guaranteed to exist in a DSH deployment
+
+Use the first that reports 3.9 or newer, and use that same interpreter for every script in the run. **If none qualifies, say so and stop.** Do not attempt a partial run, and never read "the command produced no output" as a pass.
 
 Arguments, exit codes, and worked examples for each: `scripts/README.md`.
 

@@ -29,6 +29,58 @@ from typing import Dict, Iterable, List, Optional, Sequence, Tuple
 TOOL_NAME = "github-project-publisher"
 TOOL_VERSION = "1.0.0"
 
+# ---------------------------------------------------------------------------
+# Python 版本要求
+# ---------------------------------------------------------------------------
+
+# 本套脚本使用 Python 3.9 才有的语法与标准库接口。
+MIN_PYTHON = (3, 9)
+
+
+def python_version_supported(version_info=None) -> bool:
+    """判断解释器版本是否满足要求。
+
+    单独抽成函数是为了能被自检覆盖：否则"版本太低"这条路径永远只能靠
+    真去找一个旧解释器来验证，实际上就等于没验证过。
+    """
+    info = sys.version_info if version_info is None else version_info
+    return (int(info[0]), int(info[1])) >= MIN_PYTHON
+
+
+def _require_supported_python() -> None:
+    """在导入期挡掉过旧的解释器，并给出可执行的说明。
+
+    为什么要在导入期做：若放任不管，3.8 及更早会在某一行深处抛出
+    SyntaxError 或 AttributeError。使用者（以及 Agent）看到的报错与真实原因
+    无关，很容易判定成"脚本有 bug"，于是去改一个根本没问题的脚本。
+
+    退出码取 2 而不是 1：按本项目的约定，
+    **2 表示「检查根本没有跑成」，1 表示「跑了但没通过」**。
+    两者混同会把一次未执行的检查读成一次通过。
+    """
+    if python_version_supported():
+        return
+    wanted = "{0}.{1}".format(*MIN_PYTHON)
+    actual = "{0}.{1}.{2}".format(*sys.version_info[:3])
+    sys.stderr.write(
+        "{0} 需要 Python {1} 或更高版本，当前解释器为 {2}（{3}）。\n"
+        "请改用受支持的解释器后重跑，可依次尝试：\n"
+        "  python / python3 / py -3\n"
+        "若以上都不满足，可使用 DSH 提供的解释器——\n"
+        "  调用 load_workspace_dependencies，用其返回的 python 路径。\n"
+        "退出码 2 表示「检查没有跑成」，不是「检查通过」。\n".format(
+            TOOL_NAME, wanted, actual, sys.executable
+        )
+    )
+    raise SystemExit(2)
+
+
+_require_supported_python()
+
+# ---------------------------------------------------------------------------
+# 路径常量
+# ---------------------------------------------------------------------------
+
 SCRIPTS_DIR = Path(__file__).resolve().parent
 SKILL_DIR = SCRIPTS_DIR.parent
 

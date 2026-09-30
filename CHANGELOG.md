@@ -31,6 +31,10 @@
 - GitHub 平台文件：Issue 模板、PR 模板、Dependabot 配置
 - `.github/workflows/ci.yml`：CI 质量门禁——自测、敏感信息扫描、提交身份核验、编码与行尾检查、双语一致性检查、`SKILL.md` frontmatter 校验。**工作流不含任何发布步骤**，自动化不得绕过两道人工闸门
 - `.github-upload-audit/allowlist.txt`：显式豁免清单。审计报告不入库，但本清单作为配置入库，否则豁免记录会随报告一起丢失
+- 脚本的 **Python 版本守卫**：解释器低于 3.9 时以退出码 2 退出，并说明它实际拿到的是哪个解释器。此前没有守卫，旧解释器会在深处抛出与真实原因无关的报错，容易被误判成"脚本有 bug"。判据抽成可测函数 `python_version_supported`，由自检覆盖
+- `SKILL.md` 与 README 补齐 **Python 版本要求（3.9+）与解释器查找顺序**：`python` → `python3` → `py -3` → `load_workspace_dependencies` 返回的 DSH 自带解释器。此前四份文档中只有 `scripts/README.md` 与 `CONTRIBUTING.md` 提到版本，而 `SKILL.md`（Agent 实际读取的那份）一个字都没写；"`python` 不一定存在、也不一定是预期版本"则完全没有记录
+- CI 矩阵增加 **Python 3.14**。只在 3.9 与 3.13 上验证，等于默认新版本不会破坏任何东西——而本机环境恰好已经跑在 3.14 上
+- `SKILL.md` 补充 DSH 沙箱下的推送故障处置：schannel TLS 后端在受限会话中无法获取凭据（`SEC_E_NO_CREDENTIALS`），应对本仓库改用 OpenSSL；`!<命令>` 形式的凭据助手需要启动 shell，同样被沙箱拦下，应当请求用户批准而不是绕开——尤其不得把令牌塞进远程 URL
 
 ### Security
 
