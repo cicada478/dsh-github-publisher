@@ -1,0 +1,117 @@
+name: 缺陷报告
+description: 报告一个可复现的缺陷
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        > ⚠️ **安全漏洞请勿在此提交。**
+        > 请改用 [Security 标签页的私有报告通道](https://github.com/cicada478/dsh-github-publisher/security/advisories/new)。
+
+  - type: checkboxes
+    id: preflight
+    attributes:
+      label: 提交前确认
+      options:
+        - label: 我已搜索现有 issue，确认这不是重复问题
+          required: true
+        - label: 这不是安全漏洞（安全漏洞走私有通道）
+          required: true
+
+  - type: input
+    id: version
+    attributes:
+      label: 版本或提交
+      description: 标签版本，或 `git rev-parse --short HEAD` 的输出
+      placeholder: "0.1.0 或 a1b2c3d"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: os
+    attributes:
+      label: 操作系统
+      options:
+        - Windows
+        - macOS
+        - Linux
+        - 其他
+    validations:
+      required: true
+
+  - type: input
+    id: python
+    attributes:
+      label: Python 版本
+      description: "`python --version` 的输出"
+      placeholder: "Python 3.13.5"
+    validations:
+      required: true
+
+  - type: dropdown
+    id: component
+    attributes:
+      label: 涉及的组件
+      options:
+        - scan_secrets.py（敏感信息扫描）
+        - check_identity.py（身份核验）
+        - make_checksums.py（校验和生成）
+        - audit_repo.py（审计汇总）
+        - SKILL.md 或 references 文档
+        - 仓库配置文件
+        - 其他
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected-actual
+    attributes:
+      label: 期望结果与实际结果
+    validations:
+      required: true
+
+  - type: textarea
+    id: repro
+    attributes:
+      label: 复现步骤
+      description: 请给出最小可复现的命令序列
+      render: powershell
+    validations:
+      required: true
+
+  - type: dropdown
+    id: surface
+    attributes:
+      label: 扫描面（仅扫描类缺陷填写）
+      description: 这决定了漏检属于已知限制还是缺陷，请务必填写
+      options:
+        - 不适用
+        - 工作区（--worktree）
+        - 暂存区（--staged）
+        - git 历史（--history）
+        - 日志与产物（--artifacts）
+    validations:
+      required: false
+
+  - type: input
+    id: engine
+    attributes:
+      label: 检测引擎（仅扫描类缺陷填写）
+      description: 由脚本输出中的 `engine` 字段给出
+      placeholder: "gitleaks / trufflehog / 内置规则"
+    validations:
+      required: false
+
+  - type: textarea
+    id: output
+    attributes:
+      label: 输出
+      description: |
+        粘贴相关输出。
+
+        **粘贴前请确认其中不含真实密钥、令牌、密码或邮箱地址。**
+        如有，请先用 `***` 替换，再粘贴。issue 是公开且永久可检索的。
+      render: text
+    validations:
+      required: false

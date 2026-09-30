@@ -1,0 +1,182 @@
+# ---------------------------------------------------------------------------
+# 持续集成
+#
+# 设计原则：CI 只做**本仓库自身的质量门禁**，不做发布。
+#   发布流程有两道人工闸门（见 .dsh/skills/github-project-publisher/SKILL.md），
+#   自动化不得绕过它们——因此本工作流没有任何 publish / release 步骤。
+#
+# 依据：
+#   - https://docs.github.com/en/actions/how-tos/write-workflows
+#   - 本仓库 CONTRIBUTING.md 的「提交前自检」一节
+# ---------------------------------------------------------------------------
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# 最小权限：只读仓库内容，不授予任何写权限
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: 自测与门禁
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        # 3.9 用于验证 CONTRIBUTING 声明的「Python 3.9+」确实成立
+        python-version: ['3.9', '3.13']
+
+    steps:
+      - name: 检出（需完整历史）
+        uses: actions/checkout@v4
+        with:
+          # 敏感信息历史扫描与提交身份核验都需要完整历史，
+          # 默认的浅克隆会让这两项检查静默失效。
+          fetch-depth: 0
+
+      - name: 配置 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: 自测
+        run: python .dsh/skills/github-project-publisher/scripts/selftest.py
+
+      - name: 敏感信息扫描（工作区 + 历史）
+        run: |
+          python .dsh/skills/github-project-publisher/scripts/scan_secrets.py \
+            --worktree --history
+
+      - name: 提交身份核验
+        run: python .dsh/skills/github-project-publisher/scripts/check_identity.py
+
+  hygiene:
+    name: 编码、行尾与双语一致性
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 检出
+        uses: actions/checkout@v4
+
+      - name: 配置 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
+      - name: 编码与行尾门禁
+        run: |
+          python - <<'PY'
+          import pathlib, sys
+
+          root = pathlib.Path(".")
+          skip = {".git", "__pycache__", "node_modules"}
+          failures = []
+          checked = 0
+
+          for path in root.rglob("*"):
+              if not path.is_file():
+                  continue
+              if skip & set(path.parts):
+                  continue
+              data = path.read_bytes()
+              if not data:
+                  continue
+              checked += 1
+              if data.startswith(b"\xef\xbb\xbf"):
+                  failures.append(f"{path}: 含 UTF-8 BOM")
+              if b"\r\n" in data:
+                  # .bat / .cmd 依 .gitattributes 要求 CRLF，属例外
+                  if path.suffix.lower() not in {".bat", ".cmd"}:
+                      failures.append(f"{path}: 含 CRLF 行尾")
+
+          print(f"已检查 {checked} 个文件")
+          for item in failures:
+              print(f"FAIL {item}")
+          sys.exit(1 if failures else 0)
+          PY
+
+      - name: 双语文件一致性
+        run: |
+          python - <<'PY'
+          import pathlib, re, sys
+
+          def stats(p):
+              text = pathlib.Path(p).read_text(encoding="utf-8")
+              return (
+                  len(re.findall(r"(?m)^## ", text)),
+                  len(re.findall(r"(?m)^### ", text)),
+                  len(re.findall(r"(?m)^\d+\. \[", text)),
+              )
+
+          pairs = [
+              ("README.md", "README.en.md"),
+              (
+                  ".dsh/skills/github-project-publisher/references/commit-convention.md",
+                  ".dsh/skills/github-project-publisher/references/commit-convention.en.md",
+              ),
+          ]
+
+          bad = False
+          for zh, en in pairs:
+              a, b = stats(zh), stats(en)
+              mark = "OK " if a == b else "FAIL"
+              if a != b:
+                  bad = True
+              print(f"{mark} {zh} {a}  <->  {en} {b}")
+              print("     (二级章节, 三级章节, 引用条数)")
+
+          print("双语同步约束：改一份必须在同一次变更中改另一份")
+          sys.exit(1 if bad else 0)
+          PY
+
+      - name: SKILL.md frontmatter 校验
+        run: |
+          python - <<'PY'
+          import pathlib, re, sys
+
+          path = pathlib.Path(
+              ".dsh/skills/github-project-publisher/SKILL.md"
+          )
+          raw = path.read_text(encoding="utf-8")
+          m = re.match(r"(?s)\A---\r?\n(.*?)\r?\n---", raw)
+          if not m:
+              print("FAIL 未找到 YAML frontmatter")
+              sys.exit(1)
+
+          block = m.group(1)
+          name = re.search(r"(?m)^name:\s*(.+?)\s*$", block)
+          desc = re.search(r"(?ms)^description:\s*\"?(.*?)\"?\s*$", block)
+
+          ok = True
+          if not name or not re.match(r"^[a-z0-9]+(-[a-z0-9]+)*$", name.group(1)):
+              print(f"FAIL name 缺失或非 kebab-case")
+              ok = False
+          else:
+              print(f"OK   name = {name.group(1)}")
+
+          length = len(desc.group(1)) if desc else 0
+          if length == 0 or length > 500:
+              print(f"FAIL description 长度 {length}（需 1..500）")
+              ok = False
+          else:
+              print(f"OK   description 长度 {length}（上限 500）")
+
+          # 未加引号的标量中出现 ": " 会使 YAML 解析失败，
+          # 导致整个 skill 从会话目录中消失且无任何报错。
+          for line in block.splitlines():
+              kv = re.match(r"^[A-Za-z_-]+:\s*(.+)$", line)
+              if kv and not kv.group(1).startswith('"') and ": " in kv.group(1):
+                  print(f"FAIL 未加引号标量中含 ': '，会破坏 YAML：{line}")
+                  ok = False
+
+          sys.exit(0 if ok else 1)
+          PY

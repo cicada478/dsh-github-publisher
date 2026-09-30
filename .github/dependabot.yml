@@ -1,0 +1,36 @@
+# ---------------------------------------------------------------------------
+# Dependabot 配置
+#
+# 说明：本项目**刻意没有任何第三方依赖**——脚本仅使用 Python 标准库。
+#      因此这里没有 `pip` 生态条目：一个不监控任何依赖的条目只会产生噪音，
+#      并与"每条配置都应有实际作用"的原则冲突。
+#
+#      若将来引入了任何第三方依赖（新增 requirements.txt / pyproject.toml
+#      中的 dependencies），**必须**同时补上对应的 pip 条目，否则依赖将
+#      在无人监控的情况下过期。
+#
+# 依据：
+#   - https://docs.github.com/en/code-security/dependabot/dependabot-version-updates/configuration-options-for-the-dependabot.yml-file
+# ---------------------------------------------------------------------------
+version: 2
+updates:
+  # GitHub Actions 工作流中引用的 action 版本
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "09:00"
+      timezone: "Asia/Shanghai"
+    open-pull-requests-limit: 5
+    labels:
+      - "dependencies"
+      - "ci"
+    commit-message:
+      # 遵循 Conventional Commits，见 references/commit-convention.md
+      prefix: "ci"
+      include: "scope"
+    groups:
+      github-actions:
+        patterns:
+          - "*"

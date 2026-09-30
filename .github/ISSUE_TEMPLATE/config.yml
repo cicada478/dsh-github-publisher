@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 安全漏洞（私有报告）
+    url: https://github.com/cicada478/dsh-github-publisher/security/advisories/new
+    about: 请勿通过公开 issue 报告安全漏洞。此通道只有维护者可见。
+  - name: 安全策略与已知限制
+    url: https://github.com/cicada478/dsh-github-publisher/blob/main/SECURITY.md
+    about: 了解本项目的威胁模型、已知限制与披露流程

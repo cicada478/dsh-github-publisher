@@ -1,0 +1,17 @@
+# SHA256 checksums — 由 github-project-publisher/make_checksums.py 生成
+# 格式与 coreutils `sha256sum -c` 兼容；请勿手工编辑（BOM/CRLF 会破坏校验）
+a76937c7ddc9654af1454ddef3a4f4e7944ecbec8b93f595cee8b95e2d3bc080  .dsh/skills/github-project-publisher/SKILL.md
+72e80dca0217c5821bf04cc3ea236c5962b066548dcec6d9c2b6f16145fb1a40  .dsh/skills/github-project-publisher/references/checks.md
+75aab7a6646edb38cacca3ae2c82b606de51309fd1ff98f7724a07223d0ec751  .dsh/skills/github-project-publisher/references/commit-convention.en.md
+f63be632b459cd74665e2efde919810071d49bcbb9f0e74b87755eaa560646fc  .dsh/skills/github-project-publisher/references/commit-convention.md
+feb80cc74eda2d40c3f6dcf4a27db34945ca31d588d4331f7bec7f51688b35ed  .dsh/skills/github-project-publisher/references/interaction.md
+30941da98696cc2afe938a56132e58ad770db6f1f68d93d618535710fe119486  .dsh/skills/github-project-publisher/references/standards.md
+ea43d8e818b898b4f3dce7fbfd896cc34d955d3378af1a418e97a653c7cd148f  .dsh/skills/github-project-publisher/references/templates.md
+3f20440220825e29b0c84b7318c2a054bb0b426db7840e4e3eaebc1056407245  .dsh/skills/github-project-publisher/scripts/README.md
+d06da8ae041323a4f5db5d43dee3b011123514df1589f5237e1f91f5343223b8  .dsh/skills/github-project-publisher/scripts/_common.py
+f2d2b9923dbde717a334ff8ae87b23a0cf7b65d40389052fded2500d86881d42  .dsh/skills/github-project-publisher/scripts/_normalize_eol.py
+cbc487424ea529f4a902ec36e8c280a30f68f658536535d639e1aa4b7e39733d  .dsh/skills/github-project-publisher/scripts/audit_repo.py
+a4c8383648f12f5b121d3215ff1204b6c38071132eaba5383428bf5e62b87417  .dsh/skills/github-project-publisher/scripts/check_identity.py
+3f6f3b1836e770a6655a94441d1994a2b9bedd4955ade30e949237b99020b732  .dsh/skills/github-project-publisher/scripts/make_checksums.py
+78cf60adf7ca1a62332770bd798a18c533959627bf73b532bf0e4d7a4f26fb1f  .dsh/skills/github-project-publisher/scripts/scan_secrets.py
+76692667699a4cc1702dab179ea8f452c22247f195bf17609478f31408dcb919  .dsh/skills/github-project-publisher/scripts/selftest.py

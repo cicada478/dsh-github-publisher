@@ -1,0 +1,76 @@
+# ---------------------------------------------------------------------------
+# .gitattributes — dsh-github-publisher
+#
+# 目的：让仓库内的行尾与二进制判定**确定**，而不是依赖每位贡献者的
+#      core.autocrlf 设置。缺少本文件时，Windows 提交的 CRLF 会进入仓库，
+#      Linux/macOS 使用者会看到整文件 diff。
+#
+# 依据：
+#   - https://git-scm.com/docs/gitattributes
+#   - https://docs.github.com/en/get-started/getting-started-with-git/configuring-git-to-handle-line-endings
+# ---------------------------------------------------------------------------
+
+# 默认：由 git 自动判定文本文件，仓库内统一 LF
+* text=auto eol=lf
+
+# ---- 必须为 CRLF 的例外 ----
+# Windows 批处理解析依赖 CRLF；使用 LF 会使 goto / label 失配。
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# ---- 二进制：不转换、不显示 diff ----
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.ico    binary
+*.bmp    binary
+*.webp   binary
+*.pdf    binary
+*.zip    binary
+*.gz     binary
+*.tgz    binary
+*.bz2    binary
+*.7z     binary
+*.rar    binary
+*.woff   binary
+*.woff2  binary
+*.ttf    binary
+*.otf    binary
+*.xlsx   binary
+*.docx   binary
+*.pptx   binary
+
+# ---- 校验和文件：必须保持字节确定 ----
+# SHA256SUMS 会被 Linux 侧 sha256sum -c 校验，任何行尾或编码转换都会破坏它。
+SHA256SUMS     text eol=lf
+*.sha256       text eol=lf
+*.sha256sum    text eol=lf
+
+# ---- 文本类型与 diff 驱动 ----
+*.md     text eol=lf diff=markdown
+*.py     text eol=lf diff=python
+*.ps1    text eol=lf
+*.sh     text eol=lf
+*.json   text eol=lf
+*.yml    text eol=lf
+*.yaml   text eol=lf
+*.toml   text eol=lf
+*.cfg    text eol=lf
+*.ini    text eol=lf
+*.txt    text eol=lf
+LICENSE  text eol=lf
+.gitignore     text eol=lf
+.gitattributes text eol=lf
+
+# ---- 不显示 diff 的生成物 ----
+*.min.js    -diff
+*.min.css   -diff
+*.lock      -diff
+package-lock.json -diff
+pnpm-lock.yaml    -diff
+
+# ---- 归档时排除 ----
+.github/      export-ignore
+.gitignore    export-ignore
+.gitattributes export-ignore

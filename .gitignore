@@ -1,0 +1,115 @@
+# ---------------------------------------------------------------------------
+# .gitignore — dsh-github-publisher
+#
+# 说明：本文件是**第二道防线**，不是第一道。
+#   真正的防线是「不产出敏感文件」与「提交前扫描」。.gitignore 对已被跟踪的
+#   文件无效，也会制造「已忽略 = 已安全」的错觉。
+#   依据：https://git-scm.com/docs/gitignore
+# ---------------------------------------------------------------------------
+
+# ---- 操作系统产物 ----
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+$RECYCLE.BIN/
+.DS_Store
+._*
+
+# ---- 编辑器与 IDE ----
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.orig
+*.rej
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+*.egg-info/
+.installed.cfg
+*.egg
+.venv/
+venv/
+ENV/
+env/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+
+# ---- Node（skill 在目标项目中可能生成 commitlint 配置）----
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+.npm/
+
+# ---- 环境变量与凭据 ----
+# 注意：.env 一旦被提交过，加入 .gitignore 不会使其从历史消失，
+#      必须改写历史或轮换密钥。详见 skill 的 references/checks.md。
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+id_rsa*
+id_ed25519*
+id_ecdsa*
+credentials.json
+secrets.yml
+secrets.yaml
+
+# ---- 审计产物 ----
+# 审计报告可能含敏感命中的位置信息，默认不入库。
+# 但 allowlist.txt 是**配置**而非产物，必须入库，否则豁免记录随之丢失、
+# 且下次运行会在同一处重复误报。
+.github-upload-audit/report-*.md
+.github-upload-audit/report-*.json
+*.audit.json
+*.tmp
+*.bak
+
+# 自测脚本在工作区内的回退临时目录。
+# 需要回退是因为 DSH 受限模式下临时区是扁平可写的：可以在 $TEMP 顶层写文件，
+# 但无法向新建的临时子目录内写文件（PermissionError），
+# 因此 tempfile.TemporaryDirectory() 在沙箱内会失败、在 CI 上正常。
+#
+# 规范名称只有 .selftest-tmp/ 一个。下面其余几条是**防御性兜底**：
+# 开发过程中实际观测到过其他命名，且失败时未必被清理。
+# 这些兜底条目应在实现收敛后删除——它们掩盖的是缺陷，不是需求。
+.selftest-tmp/
+_selftest_work/
+.selftest-work/
+_tmp_work/
+/gpp-*/
+
+# ---------------------------------------------------------------------------
+# 明确**不忽略**的路径
+# ---------------------------------------------------------------------------
+# .dsh/skills/ 是 DSH 的项目级 skill 根目录（rank 100）。
+# 项目级 skill 必须随仓库分发，团队成员与使用者 clone 后即可用，
+# 因此 .dsh/ 整体不忽略，仅排除其中可能产生的 Python 缓存。
+!.dsh/
+!LICENSE
+!README.md
+!SHA256SUMS
