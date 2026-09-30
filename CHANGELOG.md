@@ -47,6 +47,9 @@
 
 ### Fixed
 
+- **修正了一处会产生假 BLOCKER 的缺陷**：占位符判定一律回查工作树文档，而同一路径在历史里的行号与工作树**未必一致**——上游多插几行就整体位移，历史中的文档示例因而被误报成 BLOCKER。现在每条发现项记录它来自哪份文档（工作树 / 产物 / 暂存区 / 提交），判定回查**产生它的那一份**。该缺陷在仓库出现第二次提交、README 行号位移之后立刻显形：审计突然报出 4 条 BLOCKER，全部指向 AWS 的公开示例密钥 `AKIAIOSFODNN7EXAMPLE`
+- 上述缺陷的成因是**编排逻辑被复制了两份**（`scan_secrets.run_scan` 与 `audit_repo._run_secret_scan`），只改一处必然漏掉另一处——本次第一轮修复正是如此。已在两处都加注，长期应当让 `audit_repo` 直接复用 `run_scan` 而不是继续维护第二份拷贝
+- 新增回归用例 `test_history_placeholder_survives_line_shift`，走**审计那条路径**，并断言"确实扫了历史面"以防用例空过；已验证该用例在移除来源标签时确实失败
 - 修正了提交规范中 `type(scope) : subject` 的多余空格：正确形式为 `type(scope): subject`
 - 修正了将 `BREAKING CHANGE` 误列为 `type` 的概念性错误：它是 footer token 或 `!` 标记，可属于任意 type
 - 移除了非标准 type `init`

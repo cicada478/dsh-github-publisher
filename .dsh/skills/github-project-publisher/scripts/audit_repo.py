@@ -967,7 +967,17 @@ def _run_secret_scan(result: AuditResult, options):
 
     raw_findings: List[Finding] = []
     for doc in documents:
-        raw_findings.extend(_scan_secrets.scan_document(doc))
+        # 给发现项打上来源标签，供后续占位符判定回查**产生它的那一份**文档。
+        # 历史里的行号与工作树未必一致，记错来源会把文档示例误报成 BLOCKER。
+        #
+        # ⚠️ 这是一段**重复实现**：同样的编排逻辑在 scan_secrets.run_scan 里
+        # 还有一份。因此任何改动都必须同时落到两处——只改一边就会漏，
+        # 本次缺陷正是这样产生的。长期应当让本函数直接复用 run_scan，
+        # 而不是继续维护第二份拷贝。
+        for finding in _scan_secrets.scan_document(doc):
+            if doc.label:
+                finding.extra["source_label"] = doc.label
+            raw_findings.append(finding)
     outcome.engines = [_scan_secrets.ENGINE_BUILTIN]
 
     external_findings: List[Finding] = []

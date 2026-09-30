@@ -1291,6 +1291,65 @@ def test_python_version_guard(sandbox: Path) -> None:
 
 
 @test
+def test_history_placeholder_survives_line_shift(sandbox: Path) -> None:
+    """回归：历史里的文档示例不因行号位移而被误报成 BLOCKER。
+
+    同一路径在工作树、暂存区、历史里各有一份文档，而它们的行号**未必一致**——
+    上游多插几行，后续行号就整体位移。占位符判定若一律回查工作树，就会拿
+    错误的行去比对，把文档里的示例密钥报成 BLOCKER。
+
+    这不是无害的噪音：假阳性正是杀死阻断机制的主要方式。告警被忽略几次之后，
+    真正的命中也没人看了。
+
+    本次缺陷之所以出现，是因为编排逻辑在 `scan_secrets.run_scan` 与
+    `audit_repo._run_secret_scan` 里各有一份——只修一边就会漏掉另一边。
+    因此这个用例走的是**审计那条路径**。
+    """
+    git(["init", "-q"], sandbox)
+    git(
+        ["config", "--local", "user.email",
+         "149449562+cicada478@users.noreply.github.com"],
+        sandbox,
+    )
+    git(["config", "--local", "user.name", "cicada478"], sandbox)
+
+    write_text(sandbox / "doc.md", "line1\nline2\n示例：AKIAIOSFODNN7EXAMPLE\n")
+    git(["add", "-A"], sandbox)
+    git(["commit", "-qm", "chore: add doc"], sandbox)
+
+    # 在占位符之前插入三行：历史里的行号与工作树从此错位
+    write_text(
+        sandbox / "doc.md",
+        "new1\nnew2\nnew3\nline1\nline2\n示例：AKIAIOSFODNN7EXAMPLE\n",
+    )
+    git(["add", "-A"], sandbox)
+    git(["commit", "-qm", "chore: shift lines"], sandbox)
+
+    result = audit_repo.AuditResult()
+    result.repo_root = sandbox
+    options = audit_repo.build_parser().parse_args(["--repo", str(sandbox)])
+    scan_result, _surfaces = audit_repo._run_secret_scan(result, options)
+
+    # 先确认这条用例不是空过：没扫历史面的话，它就什么都没验证。
+    check_in("提交历史", _surfaces, "必须真的扫了历史面，否则本用例形同虚设")
+
+    blockers = [item for item in scan_result.findings if item.severity == "BLOCKER"]
+    check_eq(
+        blockers,
+        [],
+        "行号位移不应把历史里的占位符变成 BLOCKER：{0}".format(
+            [item.format_line() for item in blockers]
+        ),
+    )
+    check(
+        len(scan_result.placeholders) >= 2,
+        "工作树与历史两份都该被识别为占位符，实际 {0} 条".format(
+            len(scan_result.placeholders)
+        ),
+    )
+
+
+@test
 def test_id001_detects_contradicting_stale_report(sandbox: Path) -> None:
     audit_dir = sandbox / _common.AUDIT_DIRNAME
     write_text(

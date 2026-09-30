@@ -1006,14 +1006,30 @@ def classify(
     被豁免的条目仍然会作为记录写进报告——每一步刻意的操作都必须留下痕迹。
     """
     outcome = ScanOutcome()
-    doc_index: Dict[str, Document] = {}
+    # 按 (来源标签, 路径) 建索引。
+    #
+    # 同一路径在工作树、暂存区、历史里各有一份文档，而它们的行号**未必一致**：
+    # 上游只要多插几行，后续行号整体位移。若只按路径索引，工作树那份会覆盖掉
+    # 其它，于是历史发现项被拿"当前文件的同一行"去做占位符判定——那一行早已
+    # 不是原来的内容，占位符识别不出来，正常的文档示例就变成 BLOCKER。
+    doc_index: Dict[Tuple[str, str], Document] = {}
     for doc in documents:
-        doc_index.setdefault(doc.path, doc)
+        doc_index.setdefault((doc.label, doc.path), doc)
+
+    def _doc_for(item: Finding) -> Optional[Document]:
+        """取回**产生该发现项的那一份**文档。
+
+        标签由扫描阶段写入 extra：工作树为空串、产物为 ``artifact``、
+        暂存区为 ``staged``、历史为提交 SHA。外部引擎的发现项没有标签，
+        回落到工作树文档——与改动前的行为一致。
+        """
+        label = str(item.extra.get("source_label", ""))
+        return doc_index.get((label, item.path))
 
     for finding in findings:
         reason_kind, detail = is_placeholder(finding.evidence_masked)
         # 证据已脱敏，占位符判定必须用原文；因此这里回查原文。
-        original = _original_value(doc_index.get(finding.path), finding)
+        original = _original_value(_doc_for(finding), finding)
         if original:
             reason_kind, detail = is_placeholder(original)
         if reason_kind:
@@ -1068,7 +1084,7 @@ def classify(
             continue
 
         if codeblock_soft and finding.rule_id.startswith("SEC-") and doc_index:
-            doc = doc_index.get(finding.path)
+            doc = _doc_for(finding)
             if doc is not None:
                 index = finding.line - doc.first_line_no
                 flags = _code_fence_flags(doc.lines)
@@ -1402,7 +1418,13 @@ def _run(args) -> int:
 
     raw_findings: List[Finding] = []
     for doc in documents:
-        raw_findings.extend(scan_document(doc))
+        # 让每条发现项记住它来自哪份文档。占位符判定稍后要回查原文，
+        # 而同一路径在不同扫描面下的行号可能不同——记错来源就会误报。
+        # 只在标签非空时写入：工作树的标签是空串，写进去只会给报告添噪声。
+        for finding in scan_document(doc):
+            if doc.label:
+                finding.extra["source_label"] = doc.label
+            raw_findings.append(finding)
     outcome.engines = [ENGINE_BUILTIN]
 
     # --- 外部引擎 ---
