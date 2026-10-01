@@ -1079,6 +1079,8 @@ def classify(
                     "matched_glob": rule.path_glob,
                     "reason": rule.reason,
                     "allowlist_line": rule.source_line,
+                    # 谁在替这条命中担保：宿主项目，还是 skill 自己带的清单。
+                    "origin": getattr(rule, "origin", "project"),
                 }
             )
             continue
@@ -1256,9 +1258,15 @@ def render_text(outcome: ScanOutcome, allowlist) -> str:
     lines.append("")
     lines.append("已应用的豁免 {0} 条（每条都附理由）：".format(len(outcome.exemptions)))
     for record in outcome.exemptions:
+        # 标明来源：读者必须能看出是宿主项目在担保，还是 skill 自带的清单。
+        origin = "skill " if record.get("origin") == "skill" else "项目  "
         lines.append(
-            "  {0} {1}:{2} 理由：{3}".format(
-                record["rule_id"], record["path"], record["line"], record["reason"]
+            "  [{0}] {1} {2}:{3} 理由：{4}".format(
+                origin,
+                record["rule_id"],
+                record["path"],
+                record["line"],
+                record["reason"],
             )
         )
     if outcome.invalid_allow_entries:

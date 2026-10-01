@@ -6,9 +6,11 @@
 
 变更分类沿用 Keep a Changelog 的标准标题（Added / Changed / Deprecated / Removed / Fixed / Security），以保证与 `conventional-changelog`、`semantic-release` 等工具链互操作。条目标题用英文，正文用中文。
 
-## [Unreleased]
+## [1.0.0] - 2026-10-01
 
-本项目尚未发布正式版本。以下内容构成首个版本，待人工核验后按 SemVer 确定版本号。
+首个版本。经人工核验后按 SemVer 定为 1.0.0：功能完整、可供使用，公开接口自此冻结——规则的增删、脚本参数与退出码约定、豁免清单格式的变更都需要主版本号或次版本号。
+
+以下内容自开发以来累积，构成 1.0.0。
 
 > **实现状态**：`references/checks.md` 登记的 31 条规则**全部有明确的执行方式**——多数由脚本或 CI 自动检查；`GIT-002`、`GIT-003`、`DOC-004` 由 Agent 判断而非脚本强制，因为它们的判据依赖上下文，硬编码反而会制造误报。完整的"规则 → 执行方式"对照见 [`references/checks.md`](.dsh/skills/github-project-publisher/references/checks.md) 第 7 节。
 >
@@ -50,6 +52,7 @@
 
 ### Fixed
 
+- **修正"项目级安装会把误报带给宿主项目"**：收窄自扫描判据后只剩宿主项目的豁免清单生效，于是把本 skill **项目级安装**进任何仓库，那个仓库都会收到 **57 条 BLOCKER** 误报（`selftest.py` 54 条、`scan_secrets.py` 3 条），而它并没有做错任何事、也没有立场替别人的文件写豁免。现改为**两份清单合并生效**：宿主项目的 `.github-upload-audit/allowlist.txt` 与 skill 目录内的 `skill-allowlist.txt`。两份格式与「理由必填」要求完全相同，报告逐条标明来源（`[skill]` / `[项目]`）。实测宿主项目已降为 **0 条**，且 skill 自带清单**不会**放过非 skill 路径——有回归用例守住这一点
 - **修正一个危险的清理缺陷**：自测在系统临时区策略下会**删除整个系统临时目录**——`_cleanup_work_dir` 无条件执行 `force_rmtree(root.parent)`，而该策略下 `root` 就是 `<TEMP>/gpp-selftest-XXXX`，其父目录即 `<TEMP>` 本身。实测中它删掉了会话的临时目录，导致此后所有受限沙箱命令都因"临时目录不存在"被拒绝。现只在父目录确实是我们自己的 `.selftest-tmp` 时才一并收掉
 - **修正自扫描豁免的盲区**：原先按**文件名整份豁免** 4 个文件，实测静默吞掉 112 条命中，其中 `_common.py` 与 `audit_repo.py` 本来一条都不产生（豁免纯属多余），而报告仍写着"并未跳过这些文件"——报告与事实相反。现改为**文件名 + 命中文本含正则元字符**双重判据；非正则字面量的命中照常上报，改由 `.github-upload-audit/allowlist.txt` 逐条显式豁免（现有 8 条目，全部附理由并进入报告）。已实测：真实形态的令牌放进名为 `selftest.py` 的文件会被报为 BLOCKER，改动前则被无声放过
 - 删除 `selftest.py` 中废弃的 `WORK_DIR_NAME`（旧命名方案残留，定义后从未引用）与重复的 `_TEMP_HOLDERS` 定义
@@ -67,3 +70,4 @@
 ---
 
 [Unreleased]: https://github.com/cicada478/dsh-github-publisher/commits/main
+[1.0.0]: https://github.com/cicada478/dsh-github-publisher/releases/tag/v1.0.0

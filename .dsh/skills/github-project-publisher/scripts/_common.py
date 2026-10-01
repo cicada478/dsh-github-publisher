@@ -85,6 +85,14 @@ SCRIPTS_DIR = Path(__file__).resolve().parent
 SKILL_DIR = SCRIPTS_DIR.parent
 
 ALLOWLIST_RELPATH = ".github-upload-audit/allowlist.txt"
+
+# skill 自带的豁免清单（位于 skill 目录内，随 skill 一起安装）。
+#
+# 为什么需要它：skill 自己的规则定义与自测里必然出现"看起来像密钥"的字符串。
+# 若只认宿主项目的那一份清单，那么**任何项目级安装本 skill 的仓库都会收到一批
+# 误报**——实测 57 条 BLOCKER，全部来自 skill 自身文件，而宿主项目没有任何理由
+# 替别人的文件写豁免。让 skill 带上自己的清单即可解决。
+SKILL_ALLOWLIST_FILENAME = "skill-allowlist.txt"
 AUDIT_DIRNAME = ".github-upload-audit"
 CHECKSUM_FILENAME = "SHA256SUMS"
 
@@ -467,6 +475,9 @@ class AllowRule:
     line: str
     reason: str
     source_line: int
+    # 该条目来自哪一份清单：``project``（宿主项目）或 ``skill``（skill 自带）。
+    # 报告里必须标明，否则读者无从判断是谁在替这条命中担保。
+    origin: str = "project"
 
     def matches(self, rule_id: str, path: str, line: int) -> bool:
         if self.rule_id not in ("*", rule_id):
@@ -634,18 +645,42 @@ _REASON_PREFIX = "reason:"
 
 
 def load_allowlist(repo_root: Path) -> Allowlist:
-    """从项目根读取 ``.github-upload-audit/allowlist.txt``（缺失则返回空清单）。"""
-    path = Path(repo_root) / ALLOWLIST_RELPATH
-    entries = Allowlist(path=path, loaded=False)
-    if not path.is_file():
-        return entries
-    text = read_text_utf8(path)
-    if text is None:
-        return entries
-    parsed = parse_allowlist_text(text, source=ALLOWLIST_RELPATH)
-    parsed.path = path
-    parsed.loaded = True
-    return parsed
+    """读取豁免清单：**宿主项目的** + **skill 自带的**，合并后一起生效。
+
+    两份清单的规则完全相同——都要求理由、都会写进报告——区别只在**谁在担保**：
+
+    * ``project``：宿主项目自己的 ``.github-upload-audit/allowlist.txt``
+    * ``skill``：skill 目录内的 ``skill-allowlist.txt``，用于 skill 自身的规则定义
+      与自测夹具
+
+    分开的理由是可移植性：skill 会被项目级安装进各种仓库，而那些仓库没有理由、
+    也没有立场替 skill 的文件写豁免。缺少这一份时，实测宿主项目会收到 57 条
+    BLOCKER 误报，全部来自 skill 自身。
+
+    两份都不存在时返回空清单（``loaded=False``）。
+    """
+    merged = Allowlist(loaded=False)
+    sources = (
+        ("project", Path(repo_root) / ALLOWLIST_RELPATH),
+        ("skill", SKILL_DIR / SKILL_ALLOWLIST_FILENAME),
+    )
+    for origin, path in sources:
+        if not path.is_file():
+            continue
+        text = read_text_utf8(path)
+        if text is None:
+            continue
+        parsed = parse_allowlist_text(text, source=to_posix(path))
+        for rule in parsed.rules:
+            rule.origin = origin
+        merged.rules.extend(parsed.rules)
+        merged.invalid.extend(parsed.invalid)
+        merged.loaded = True
+        # path 字段用于报告里显示"清单位置"。两份并存时优先显示宿主项目那份，
+        # 因为那才是使用者最可能去改的；skill 那份随 skill 分发，改它没有意义。
+        if merged.path is None or origin == "project":
+            merged.path = path
+    return merged
 
 
 # ---------------------------------------------------------------------------

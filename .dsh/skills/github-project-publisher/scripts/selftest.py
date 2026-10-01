@@ -685,16 +685,31 @@ def test_allowlist_exemption_is_applied_and_traced(sandbox: Path) -> None:
 
 @test
 def test_load_allowlist_from_project_root(sandbox: Path) -> None:
+    """豁免清单来自两处：宿主项目自己的，以及 skill 自带的。"""
     write_text(
         sandbox / _common.ALLOWLIST_RELPATH,
         "# 说明\nSEC-006  README.md  *  -- 示例邮箱\n",
     )
     loaded = _common.load_allowlist(sandbox)
+    project_rules = [r for r in loaded.rules if getattr(r, "origin", "") == "project"]
+    skill_rules = [r for r in loaded.rules if getattr(r, "origin", "") == "skill"]
+
     check(loaded.loaded, "清单应被识别为已加载")
-    check_eq(len(loaded.rules), 1)
+    check_eq(len(project_rules), 1, "宿主项目清单应加载 1 条")
+    check_eq(project_rules[0].rule_id, "SEC-006")
+    check_eq(project_rules[0].reason, "示例邮箱")
+    check(len(skill_rules) >= 1, "skill 自带清单也应加载")
+    check_eq(len(loaded.rules), len(project_rules) + len(skill_rules))
+
+    # 没有项目清单时：项目条目为 0，但 skill 那份仍然生效——
+    # 它不依赖宿主项目，这正是为了让项目级安装不把误报带给宿主。
     missing = _common.load_allowlist(sandbox / "nowhere")
-    check(not missing.loaded, "缺失清单应标记为未加载")
-    check_eq(len(missing.rules), 0)
+    check_eq(
+        [r for r in missing.rules if getattr(r, "origin", "") == "project"],
+        [],
+        "缺失项目清单时不应有项目条目",
+    )
+    check(len(missing.rules) >= 1, "但 skill 自带清单仍应生效")
 
 
 @test
@@ -767,6 +782,49 @@ def test_self_scan_hits_are_classified_separately(sandbox: Path) -> None:
     check(
         not _common.is_self_scan_hit("META-001", rule_file, "a[b]"),
         "非 SEC 规则不参与自扫描归类",
+    )
+
+
+@test
+def test_skill_carries_its_own_allowlist(sandbox: Path) -> None:
+    """回归：skill 自己文件的豁免必须随 skill 分发，而不是靠宿主项目。
+
+    此前只认宿主项目的清单。把 skill **项目级安装**进另一个仓库后，那个仓库会
+    收到 57 条 BLOCKER 误报（全部来自 skill 自身文件），而它并没有做错任何事，
+    也没有立场替别人的文件写豁免。
+
+    因此 skill 目录内自带 `skill-allowlist.txt`。本用例在**没有任何项目清单**的
+    沙箱里加载豁免，验证 skill 那份仍然生效，并验证它**不会**顺手放过别的路径。
+    """
+    empty_repo = sandbox / "host-project"
+    empty_repo.mkdir()
+    allowlist = _common.load_allowlist(empty_repo)
+
+    # skill 自身文件 → 由 skill 那份清单豁免，且标明来源与理由
+    skill_rel = ".dsh/skills/github-project-publisher/scripts/selftest.py"
+    rule = allowlist.lookup("SEC-001", skill_rel, 12345)
+    check(rule is not None, "skill 自带清单应能豁免 skill 自身文件")
+    if rule is not None:
+        check_eq(getattr(rule, "origin", ""), "skill", "来源应标为 skill")
+        check(bool(rule.reason.strip()), "豁免条目必须带理由")
+
+    check(
+        allowlist.lookup("SEC-002", skill_rel, 1) is not None,
+        "skill 自带清单应覆盖多条规则",
+    )
+
+    # 关键：它不得放过**别的**路径，否则又退化成整份豁免式的盲区
+    check(
+        allowlist.lookup("SEC-001", "src/config.py", 10) is None,
+        "skill 自带清单不得豁免非 skill 路径",
+    )
+    check(
+        allowlist.lookup("SEC-001", "scripts/selftest.py", 10) is None,
+        "同名但不在 skill 目录下的文件不得被豁免",
+    )
+    check(
+        allowlist.lookup("SEC-007", skill_rel, 10) is None,
+        "未登记的规则不得被顺手豁免",
     )
 
 
