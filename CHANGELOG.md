@@ -54,7 +54,13 @@
 
 - **把自测移出 skill bundle**：`scripts/selftest.py` → `tests/selftest.py`。它是**开发用基础设施**，skill 的使用者不会运行它；而它携带的约 110 条伪造样本会迫使**每一个**安装本 skill 的仓库去写豁免。移出后 skill 包体量减少约 28%（脚本 6876 → 约 4930 行），且 skill 自带的豁免清单从 8 条缩到 1 条（只剩 `scan_secrets.py` 的规则字面量）。自测能力不受影响：仓库的 CI 与本地仍完整运行它（80 个用例）。代价：安装后的副本不再能自证——验证能力只在仓库里。
 
+### Changed
+
+- **补全 SKILL.md 的「Reference files」**：此前那句 `This table is the complete list` 并不成立——`references/README.md` 这份规范文档不在表内；另有 4 个文件（`scripts/README.md`、`scripts/_common.py`、`scripts/_normalize_eol.py`、`skill-allowlist.txt`）既不在该表也不在脚本表。现把索引补入表内，并逐条说明那 4 项为何不作为表格行。**没有删除任何名字**：这 4 项中有 3 项从首个提交起就在仓库里、从未进入过这两张表，另 1 项（`skill-allowlist.txt`）是本次为修宿主项目误报而新建、当时漏记。该声明现已可由脚本核对：枚举技能包文件，比对 SKILL.md 中的提及
+- SKILL.md 新增一段说明 `skill-allowlist.txt` 是 **skill 自身的**豁免清单、**不是**放项目豁免的地方，并解释审计报告里的 `[skill]` / `[项目]` 标签各指谁在担保
+
 ### Fixed
+
 
 
 - **修正"项目级安装会把误报带给宿主项目"**：收窄自扫描判据后只剩宿主项目的豁免清单生效，于是把本 skill **项目级安装**进任何仓库，那个仓库都会收到 **57 条 BLOCKER** 误报（`selftest.py` 54 条、`scan_secrets.py` 3 条），而它并没有做错任何事、也没有立场替别人的文件写豁免。现改为**两份清单合并生效**：宿主项目的 `.github-upload-audit/allowlist.txt` 与 skill 目录内的 `skill-allowlist.txt`。两份格式与「理由必填」要求完全相同，报告逐条标明来源（`[skill]` / `[项目]`）。实测宿主项目已降为 **0 条**，且 skill 自带清单**不会**放过非 skill 路径——有回归用例守住这一点

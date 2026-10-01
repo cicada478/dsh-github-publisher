@@ -1,6 +1,6 @@
 # SHA256 checksums — 由 github-project-publisher/make_checksums.py 生成
 # 格式与 coreutils `sha256sum -c` 兼容；请勿手工编辑（BOM/CRLF 会破坏校验）
-548055a640f8f11b3e77a67894391ac0f89e935ce04264ac4343d2aa1ff44b7f  .dsh/skills/github-project-publisher/SKILL.md
+b924f4999d3fe565312b349c117b9e259d766f9dd0d45722301398fb6a3022db  .dsh/skills/github-project-publisher/SKILL.md
 b865c3908c3b916955a01aa67ec8fb470e8d9bac97865fd3cc874001ed732e02  .dsh/skills/github-project-publisher/references/README.md
 c820ac9c5e2cb1b046ed45b93e166ee833f4fcb46713c4ea1e08c857ac11a358  .dsh/skills/github-project-publisher/references/checks.md
 75aab7a6646edb38cacca3ae2c82b606de51309fd1ff98f7724a07223d0ec751  .dsh/skills/github-project-publisher/references/commit-convention.en.md

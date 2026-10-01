@@ -195,14 +195,24 @@ Arguments, exit codes, and worked examples for each: `scripts/README.md`. The se
 
 ## Reference files
 
-This table is the complete list. Do not enumerate the skill directory.
+This table is the complete list **of reference documents**. Do not enumerate the skill directory.
 
 | Task | File |
 |---|---|
+| Index to this directory: its three layers, the reading order, and why it is split this way. Read it first when you need more than one file below | `references/README.md` |
 | Rule IDs, severities, exemption mechanism, self-scan false positives | `references/checks.md` |
 | Rule-to-source mapping; the authoritative citation list | `references/standards.md` |
 | What to ask, what to confirm, what to default, what to refuse | `references/interaction.md` |
 | README / CHANGELOG / Release-note / audit-report templates | `references/templates.md` |
 | Commit message convention | `references/commit-convention.md` (中文) · `references/commit-convention.en.md` (English) |
 
-That directory's index — its three layers, the reading order, and why it is split this way — is `references/README.md`. Read it first when you need more than one of the files above.
+Four items in the bundle are in neither this table nor the Scripts table. Each omission is deliberate:
+
+| Item | Why it is not a row |
+|---|---|
+| `scripts/README.md` | Referenced from the Scripts section above. It carries per-script arguments, exit codes, and worked examples |
+| `scripts/_common.py` | Not an entry point — a module the other scripts import. The `_` prefix marks exactly that, and `scripts/README.md` states the convention |
+| `scripts/_normalize_eol.py` | Outside the audit flow: a one-off repository maintenance tool. Also explained in `scripts/README.md` |
+| `skill-allowlist.txt` | The skill's own exemption list; see below |
+
+**`skill-allowlist.txt` is the skill's own exemption list, and it is not where a project's exemptions go.** Every audited project has its own `.github-upload-audit/allowlist.txt`. This one covers the skill's own files and holds a single entry today — the private-key rule literal in `scan_secrets.py`, which is a rule and not a key. Both lists require a reason, and the report labels each applied exemption `[skill]` or `[项目]`, so a reader can always see who is vouching for a finding.
