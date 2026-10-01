@@ -1365,6 +1365,73 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         return 2
 
 
+def collect_and_scan(
+    repo_root: Path,
+    worktree: bool = False,
+    artifacts: bool = False,
+    staged: bool = False,
+    history: bool = False,
+    excludes: Sequence[str] = (),
+) -> Tuple[List[Document], List[Finding], List[str], int, List[str]]:
+    """按指定扫描面收集文档并逐份扫描。
+
+    **扫描编排只此一份。** CLI（``_run``）与聚合审计（``audit_repo``）都调用它。
+    此前两处各写了一份等价逻辑，于是修一处必漏另一处——并且已经因此产生过一次
+    真实缺陷：历史发现项被拿工作树的**错误行**去做占位符判定，文档里的示例密钥
+    被误报成 BLOCKER。重复实现不是风格问题，它是会实际咬人的。
+
+    返回 ``(documents, raw_findings, surfaces, files_skipped, notes)``。
+    """
+    documents: List[Document] = []
+    surfaces: List[str] = []
+    skipped = 0
+    notes: List[str] = []
+
+    if worktree:
+        docs, count = collect_worktree(repo_root, excludes=excludes)
+        documents.extend(docs)
+        skipped += count
+        surfaces.append("工作树")
+
+    if artifacts:
+        docs, count = collect_artifacts(repo_root)
+        documents.extend(docs)
+        skipped += count
+        surfaces.append("日志与产物")
+
+    if staged:
+        docs, _binary, error = collect_staged(repo_root)
+        if error:
+            notes.append("暂存区扫描失败：{0}".format(error))
+        documents.extend(docs)
+        surfaces.append("暂存区")
+
+    if history:
+        docs, _binary, error = collect_history(repo_root)
+        if error:
+            notes.append("历史扫描失败：{0}".format(error))
+        documents.extend(docs)
+        surfaces.append("提交历史")
+
+    # 去重：同一份内容可能同时来自工作树与产物面。
+    unique: Dict[Tuple[str, int, str], Document] = {}
+    for doc in documents:
+        unique.setdefault((doc.path, doc.first_line_no, doc.label), doc)
+    documents = list(unique.values())
+
+    raw_findings: List[Finding] = []
+    for doc in documents:
+        # 让每条发现项记住它来自哪份文档。占位符判定稍后要回查原文，
+        # 而同一路径在不同扫描面下的行号可能不同——记错来源就会误报。
+        # 只在标签非空时写入：工作树的标签是空串，写进去只会给报告添噪声。
+        for finding in scan_document(doc):
+            if doc.label:
+                finding.extra["source_label"] = doc.label
+            raw_findings.append(finding)
+
+    return documents, raw_findings, surfaces, skipped, notes
+
+
 def _run(args) -> int:
     repo_root = resolve_repo_root(args.repo)
     if not repo_root.is_dir():
@@ -1378,53 +1445,19 @@ def _run(args) -> int:
             {"source_line": record.source_line, "reason": record.reason}
         )
 
-    documents: List[Document] = []
-    surfaces: List[str] = []
-
-    if args.worktree:
-        docs, skipped = collect_worktree(repo_root, excludes=args.exclude)
-        documents.extend(docs)
-        outcome.files_skipped += skipped
-        surfaces.append("工作树")
-
-    if args.artifacts:
-        docs, skipped = collect_artifacts(repo_root)
-        documents.extend(docs)
-        outcome.files_skipped += skipped
-        surfaces.append("日志与产物")
-
-    if args.staged:
-        docs, _binary, error = collect_staged(repo_root)
-        if error:
-            outcome.external_notes.append("暂存区扫描失败：{0}".format(error))
-        documents.extend(docs)
-        surfaces.append("暂存区")
-
-    if args.history:
-        docs, _binary, error = collect_history(repo_root)
-        if error:
-            outcome.external_notes.append("历史扫描失败：{0}".format(error))
-        documents.extend(docs)
-        surfaces.append("提交历史")
-
-    # 去重：同一份内容可能同时来自工作树与产物面。
-    unique: Dict[Tuple[str, int, str], Document] = {}
-    for doc in documents:
-        unique.setdefault((doc.path, doc.first_line_no, doc.label), doc)
-    documents = list(unique.values())
-
+    documents, raw_findings, surfaces, skipped, notes = collect_and_scan(
+        repo_root,
+        worktree=bool(args.worktree),
+        artifacts=bool(args.artifacts),
+        staged=bool(args.staged),
+        history=bool(args.history),
+        excludes=tuple(args.exclude or ()),
+    )
+    outcome.files_skipped += skipped
+    for note in notes:
+        outcome.external_notes.append(note)
     outcome.files_scanned = len(documents)
     outcome.surfaces = surfaces
-
-    raw_findings: List[Finding] = []
-    for doc in documents:
-        # 让每条发现项记住它来自哪份文档。占位符判定稍后要回查原文，
-        # 而同一路径在不同扫描面下的行号可能不同——记错来源就会误报。
-        # 只在标签非空时写入：工作树的标签是空串，写进去只会给报告添噪声。
-        for finding in scan_document(doc):
-            if doc.label:
-                finding.extra["source_label"] = doc.label
-            raw_findings.append(finding)
     outcome.engines = [ENGINE_BUILTIN]
 
     # --- 外部引擎 ---

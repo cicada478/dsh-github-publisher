@@ -907,23 +907,19 @@ def run_audit(repo_root: Path, options) -> AuditResult:
 
 def _run_secret_scan(result: AuditResult, options):
     """按扫描面调用 scan_secrets。返回 ``(ScanOutcome, 扫描面标签列表)``。"""
-    surfaces: List[str] = []
+    # 修正：此前两个分支都无条件传入 --artifacts，于是 --no-artifacts 实际无效；
+    # 而 surfaces 标签又另行按该开关推导，结果是**报告声明未扫描产物面、实际却扫了**。
+    # 现在标签由收集过程返回（见下方 collect_and_scan），不再另行推导。
     argv: List[str] = ["--repo", to_posix(result.repo_root), "--format", "json"]
-    if getattr(options, "no_history", False):
-        argv.extend(["--worktree", "--staged", "--artifacts"])
-        if not getattr(options, "no_artifacts", False):
-            surfaces = ["工作树", "暂存区", "日志与产物"]
-        else:
-            surfaces = ["工作树", "暂存区"]
-    else:
-        argv.extend(["--worktree", "--staged", "--history", "--artifacts"])
-        surfaces = ["工作树", "暂存区", "提交历史", "日志与产物"]
+    argv.extend(["--worktree", "--staged"])
+    if not getattr(options, "no_history", False):
+        argv.append("--history")
+    if not getattr(options, "no_artifacts", False):
+        argv.append("--artifacts")
     if getattr(options, "no_external", False):
         argv.append("--no-external")
     if getattr(options, "codeblock_soft", False):
         argv.append("--codeblock-soft")
-    if getattr(options, "allowlist", None):
-        pass  # 豁免清单由 scan_secrets 自行从项目根读取
 
     parser = _scan_secrets.build_parser()
     parsed = parser.parse_args(argv)
@@ -938,46 +934,27 @@ def _run_secret_scan(result: AuditResult, options):
             {"source_line": record.source_line, "reason": record.reason}
         )
 
-    documents = []
-    if parsed.worktree:
-        docs, skipped = _scan_secrets.collect_worktree(repo_root, excludes=parsed.exclude)
-        documents.extend(docs)
-        outcome.files_skipped += skipped
-    if parsed.artifacts:
-        docs, skipped = _scan_secrets.collect_artifacts(repo_root)
-        documents.extend(docs)
-        outcome.files_skipped += skipped
-    if parsed.staged:
-        docs, _binary, error = _scan_secrets.collect_staged(repo_root)
-        if error:
-            outcome.external_notes.append("暂存区扫描失败：{0}".format(error))
-        documents.extend(docs)
-    if parsed.history:
-        docs, _binary, error = _scan_secrets.collect_history(repo_root)
-        if error:
-            outcome.external_notes.append("历史扫描失败：{0}".format(error))
-        documents.extend(docs)
-
-    unique: Dict[Tuple[str, int, str], object] = {}
-    for doc in documents:
-        unique.setdefault((doc.path, doc.first_line_no, doc.label), doc)
-    documents = list(unique.values())
+    # 扫描编排复用 scan_secrets 的实现，本模块不再保留第二份拷贝。
+    # 这里曾经有一份等价逻辑，结果是「修一处必漏另一处」——并因此产生过一次
+    # 真实缺陷：历史发现项被拿工作树的错误行做占位符判定，示例密钥被误报成
+    # BLOCKER。凡是两处都要改的，迟早只改一处。
+    documents, raw_findings, collected_surfaces, skipped, notes = (
+        _scan_secrets.collect_and_scan(
+            repo_root,
+            worktree=bool(parsed.worktree),
+            artifacts=bool(parsed.artifacts),
+            staged=bool(parsed.staged),
+            history=bool(parsed.history),
+            excludes=tuple(parsed.exclude or ()),
+        )
+    )
+    outcome.files_skipped += skipped
+    for note in notes:
+        outcome.external_notes.append(note)
     outcome.files_scanned = len(documents)
-    outcome.surfaces = surfaces
-
-    raw_findings: List[Finding] = []
-    for doc in documents:
-        # 给发现项打上来源标签，供后续占位符判定回查**产生它的那一份**文档。
-        # 历史里的行号与工作树未必一致，记错来源会把文档示例误报成 BLOCKER。
-        #
-        # ⚠️ 这是一段**重复实现**：同样的编排逻辑在 scan_secrets.run_scan 里
-        # 还有一份。因此任何改动都必须同时落到两处——只改一边就会漏，
-        # 本次缺陷正是这样产生的。长期应当让本函数直接复用 run_scan，
-        # 而不是继续维护第二份拷贝。
-        for finding in _scan_secrets.scan_document(doc):
-            if doc.label:
-                finding.extra["source_label"] = doc.label
-            raw_findings.append(finding)
+    # 扫描面标签由收集过程给出，不再从参数另行推导——两处推导迟早会不一致。
+    outcome.surfaces = collected_surfaces
+    surfaces = collected_surfaces
     outcome.engines = [_scan_secrets.ENGINE_BUILTIN]
 
     external_findings: List[Finding] = []
