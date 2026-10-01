@@ -49,12 +49,6 @@ import scan_secrets  # noqa: E402
 
 _common.configure_stdio()
 
-# 自检工作目录名（回退策略使用）。
-WORK_DIR_NAME = ".selftest-work"
-
-# TemporaryDirectory 句柄：需要在 finally 里显式清理，故在模块级持有。
-_TEMP_HOLDERS: List[tempfile.TemporaryDirectory] = []
-
 
 # ---------------------------------------------------------------------------
 # 极简测试框架
@@ -733,16 +727,45 @@ def test_codeblock_soft_downgrades_but_still_reports(sandbox: Path) -> None:
 
 @test
 def test_self_scan_hits_are_classified_separately(sandbox: Path) -> None:
+    """自扫描豁免必须**同时**满足「规则定义文件」与「命中文本像正则」两条。
+
+    只看文件名是危险的：那等于把这几个文件整份排除在扫描之外。实测过——
+    仅按文件名时，`selftest.py` 里 110 条伪造样本被静默吞掉，`audit_repo.py`
+    与 `_common.py` 本来一条都不产生，而报告仍写着「并未跳过这些文件」。
+    真实密钥若误入这些文件，会被无声放过。
+    """
+    rule_file = ".dsh/skills/x/scripts/_common.py"
+
+    # 1) 规则定义文件 + 正则字面量 → 豁免
     check(
-        _common.is_self_scan_hit("SEC-002", ".dsh/skills/x/scripts/_common.py"),
-        "扫描器源码里的规则字面量应被识别为自扫描命中",
+        _common.is_self_scan_hit(
+            "SEC-002", rule_file, "-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----"
+        ),
+        "规则定义文件里的正则字面量应被识别为自扫描命中",
     )
+    # 2) 同一个文件，但命中文本是**普通值** → 不得豁免
+    #    这一条就是原来的盲区：文件级判据会把真实密钥一并放过。
     check(
-        not _common.is_self_scan_hit("SEC-002", "src/config.py"),
+        not _common.is_self_scan_hit(
+            "SEC-002", rule_file, "-----BEGIN PRIVATE KEY-----"
+        ),
+        "同一文件里的普通值不得被豁免——否则真实密钥会被无声放过",
+    )
+    # 3) 普通文件即使含正则字面量也不豁免
+    check(
+        not _common.is_self_scan_hit("SEC-002", "src/config.py", "AKIA[0-9A-Z]{16}"),
         "普通文件不得被当成自扫描命中",
     )
+    # 4) 自测文件不在规则定义文件之列：其夹具照常上报，改由 allowlist 显式豁免
     check(
-        not _common.is_self_scan_hit("META-001", "_common.py"),
+        not _common.is_self_scan_hit(
+            "SEC-001", ".dsh/skills/x/scripts/selftest.py", "AKIA[0-9A-Z]{16}"
+        ),
+        "自测文件不是规则定义文件，其夹具应照常上报",
+    )
+    # 5) 非 SEC 规则不参与
+    check(
+        not _common.is_self_scan_hit("META-001", rule_file, "a[b]"),
         "非 SEC 规则不参与自扫描归类",
     )
 
@@ -1676,7 +1699,18 @@ def _prepare_work_dir() -> Tuple[Path, str]:
 
 
 def _cleanup_work_dir(root: Path) -> bool:
-    """删除临时根目录与 scratch 父目录；返回是否**确实全部删掉**。"""
+    """删除临时根目录；返回是否**确实删掉**。
+
+    ⚠️ **绝不无条件删除 ``root.parent``。**
+
+    系统临时区策略下 ``root`` 就是 ``<TEMP>/gpp-selftest-XXXX``，它的父目录是
+    **整个系统临时目录**——删它等于破坏其它程序（以及 DSH 运行时自己）正在使用
+    的目录。这个缺陷真实发生过：一次自检把会话的临时目录删掉，导致此后所有受限
+    沙箱命令都因"临时目录不存在"而拒绝执行。
+
+    仅当父目录**确实是我们自己的** ``.selftest-tmp`` 时才一并收掉；否则会在仓库里
+    留下一个空目录，那点代价远小于误删系统目录。
+    """
     for holder in _TEMP_HOLDERS:
         try:
             holder.cleanup()
@@ -1684,8 +1718,8 @@ def _cleanup_work_dir(root: Path) -> bool:
             pass
     _TEMP_HOLDERS.clear()
     removed = force_rmtree(root)
-    # run-<pid> 的父目录（.selftest-tmp）也要收掉，否则会在仓库里留一个空目录。
-    removed = force_rmtree(root.parent) and removed
+    if root.parent.name == SCRATCH_DIR_NAME:
+        removed = force_rmtree(root.parent) and removed
     return removed
 
 

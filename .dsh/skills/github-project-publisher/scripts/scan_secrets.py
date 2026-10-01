@@ -1055,7 +1055,7 @@ def classify(
             )
             continue
 
-        if is_self_scan_hit(finding.rule_id, finding.path):
+        if is_self_scan_hit(finding.rule_id, finding.path, original or finding.evidence_masked):
             # 规则定义文件里的规则字面量：单独列出，不污染 BLOCKER 计数。
             outcome.self_hits.append(
                 {

@@ -419,22 +419,38 @@ def is_placeholder(value: str) -> Tuple[bool, str]:
 #   * 降级为占位符 = 会在 INFO 里被当成"文档示例"，掩盖真实误报；
 #   * 单独列出 = 位置与规则编号照样可见，审计留痕，但不污染 BLOCKER 计数。
 #
-# 判据刻意收得很窄：文件名匹配 ``scan_secrets.py`` / ``_common.py``，
-# 且规则编号属于本工具自定义的 SEC-00x 段。
+# 判据**必须同时满足两条**，缺一不可：
+#   1. 文件名属于真正定义规则的那两个文件；
+#   2. 命中文本里含有正则元字符——真实密钥与真实邮箱不会出现 ``[`` ``\`` ``|``
+#      这类字符，而 ``-----BEGIN [A-Z0-9 ]*PRIVATE KEY-----`` 会。
+#
+# 为什么不能只按文件名：那等于把这几个文件整份排除在扫描之外。实测过——
+# 仅按文件名时，`selftest.py` 里 110 条伪造样本被静默吞掉，`audit_repo.py`
+# 与 `_common.py` 本来一条都不产生（豁免纯属多余），而报告却写着
+# "并未跳过这些文件"。真实密钥若误入这些文件，就会被无声放过。
+#
+# 因此非纯规则字面量的命中（例如自测夹具）**照常报为 BLOCKER**，再由
+# allowlist 逐条显式豁免——那样才有理由、才有留痕。详见 references/checks.md。
 SELF_SCAN_FILENAMES = (
     "scan_secrets.py",
     "_common.py",
-    "selftest.py",
-    "audit_repo.py",
 )
 
+_REGEX_META_CHARS = frozenset("[]()\\|*+?{}^$")
 
-def is_self_scan_hit(rule_id: str, path: str) -> bool:
-    """判断该命中是否为扫描器规则定义文件中的规则字面量。"""
+
+def is_self_scan_hit(rule_id: str, path: str, matched_text: str = "") -> bool:
+    """判断该命中是否为规则定义文件里的**正则字面量**（不是真实凭据）。
+
+    只看文件名是不够的：那会把这几个文件整份排除，真实密钥也会被放过。
+    因此额外要求命中文本里出现正则元字符。判据不成立时**照常上报**。
+    """
     if not str(rule_id).startswith("SEC-"):
         return False
     name = to_posix(path).rsplit("/", 1)[-1].lower()
-    return name in SELF_SCAN_FILENAMES
+    if name not in SELF_SCAN_FILENAMES:
+        return False
+    return any(ch in _REGEX_META_CHARS for ch in str(matched_text))
 
 
 # ---------------------------------------------------------------------------
