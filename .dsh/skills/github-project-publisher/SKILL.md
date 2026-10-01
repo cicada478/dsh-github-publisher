@@ -205,3 +205,5 @@ This table is the complete list. Do not enumerate the skill directory.
 | What to ask, what to confirm, what to default, what to refuse | `references/interaction.md` |
 | README / CHANGELOG / Release-note / audit-report templates | `references/templates.md` |
 | Commit message convention | `references/commit-convention.md` (中文) · `references/commit-convention.en.md` (English) |
+
+That directory's index — its three layers, the reading order, and why it is split this way — is `references/README.md`. Read it first when you need more than one of the files above.

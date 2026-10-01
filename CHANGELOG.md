@@ -16,6 +16,9 @@
 
 ### Added
 
+- `references/README.md`：**规范层索引**。说明三层结构（判定标准 / 依据 / 操作）、阅读顺序，以及「为什么是这六份文件，而不是更少或更多」——包括依据为何必须单独成文件（否则规则与依据互相背书，读者分不清哪句是引用、哪句是本项目自订），操作层为何与判定层分开（否则会出现把「默认执行」的事拿去提问这一具体错误）
+- README 中英双版新增 **「5.1 实现逻辑：三层与五步」**：把「扫描 → 定级 → 报告 → 人工 → 上传」五步与规范层 / 执行层 / 呈现层的分工写清楚，并说明规范与执行为何必须分开、报告为何必须带「未能覆盖」清单
+- README 中英双版的目录结构图按**规范层 / 执行层**重排，并为每个脚本标注职责
 - DSH skill `github-project-publisher`，含 `SKILL.md` 与 `references/` 文档集
 - 提交规范 `references/commit-convention.md` 及英文镜像版，依 [Conventional Commits 1.0.0](https://www.conventionalcommits.org/en/v1.0.0/) 与 `@commitlint/config-conventional` 全面校订
 - 依据来源清单 `references/standards.md`：每条规则可追溯到一手来源，每个来源对应至少一条可执行规则

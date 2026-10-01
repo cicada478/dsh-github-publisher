@@ -41,7 +41,7 @@
 # 这些值全部是伪造的：卡号与 IBAN 只满足校验位算法，其余为随意构造的字符串，
 # 不对应任何真实账号、密钥或个人信息。
 SEC-001  .dsh/skills/github-project-publisher/scripts/selftest.py  *  -- 自测构造的伪造 AWS/Slack/Azure 密钥样本，用于验证规则能命中
-SEC-002  .dsh/skills/github-project-publisher/scripts/selftest.py  *  -- 自测构造的伪造私钥样本
+SEC-002  .dsh/skills/github-project-publisher/scripts/selftest.py  *  -- 自测构造的伪造私钥样本，以及自扫描判据测试中引用的私钥规则字面量
 SEC-003  .dsh/skills/github-project-publisher/scripts/selftest.py  *  -- 自测构造的伪造口令样本
 SEC-004  .dsh/skills/github-project-publisher/scripts/selftest.py  *  -- 自测构造的伪造数据库连接串样本
 SEC-005  .dsh/skills/github-project-publisher/scripts/selftest.py  *  -- 自测构造的伪造卡号与 IBAN，仅校验位合法

@@ -177,6 +177,32 @@ skill 在检查完成后**不会直接上传**。它会先呈交：
 
 **为什么是两道闸门**：第 6 道挡的是「上传动作」，第 9 道挡的是「公开动作」。私有仓库本身构成第三层缓冲——即使前面的检查全部漏过，内容也只在你的账号内。
 
+### 5.1 实现逻辑：三层与五步
+
+要做的事其实只有五步。繁杂感来自「给每一步留下可核对的证据」：
+
+```text
+① 扫描   → 得到事实（有没有密钥、身份对不对、校验和对不对）
+② 定级   → BLOCKER 就停；MAJOR 交人决定；MINOR/INFO 只记录
+③ 出报告 → 含一张「本次没检查到什么」的清单
+④ 人工看 → README 与 Release 文案
+⑤ 上传   → 两道闸门后执行，新建仓库默认私有
+```
+
+围绕它的三层分工：
+
+| 层 | 位置 | 职责 | 谁执行 |
+|---|---|---|---|
+| **规范层** | `references/` | 说清什么必须成立、由谁负责、依据是什么 | Agent 阅读并遵循 |
+| **执行层** | `scripts/` | 只做「必须确定、必须留痕、必须不泄露」的检查 | Python，纯标准库 |
+| **呈现层** | 审计报告 | 结果 + 已用的扫描面 + **未能覆盖的清单** | `audit_repo.py` |
+
+**为什么规范与执行必须分开。** 规范是人能读、能争辩、能引用的文字；执行是重复运行结果一致的机械动作。混在一起会得到两种坏结果：把「什么必须成立」藏进代码（于是没人能争辩它），或者用 Agent 的判断替代本该确定的检查（于是结果不可复现）。哪些规则由脚本强制、哪些靠判断，由 `references/checks.md` 第 7 节逐条声明——**规范自己交代自己的自动化程度**。
+
+**为什么报告必须带「未能覆盖」清单。** 只说「通过」的报告，与说清「通过，但有 9 项没检查」的报告，含义完全不同。前者会被读成「安全」，而**审计通过从来不等于项目安全**。
+
+规范层的具体排布与阅读顺序见 [`references/README.md`](.dsh/skills/github-project-publisher/references/README.md)。
+
 ## 6. 决策分级
 
 混淆「该问的」与「不该问的」会同时造成两种失败：把必答题默认掉（风险），和不必要的追问（噪音）。本项目把每个决策点明确归入四类：
@@ -360,6 +386,7 @@ dsh-github-publisher/
 ├─ CHANGELOG.md              依 Keep a Changelog
 ├─ CONTRIBUTING.md           贡献指南（含提交规范与双语同步规则）
 ├─ SECURITY.md               安全策略与威胁模型
+├─ SHA256SUMS                技能包校验和
 ├─ .gitignore
 ├─ .gitattributes            行尾治理（仓库内统一 LF）
 ├─ .github/
@@ -370,15 +397,23 @@ dsh-github-publisher/
 ├─ .github-upload-audit/
 │  └─ allowlist.txt          豁免清单（报告不入库，本文件入库）
 └─ .dsh/skills/github-project-publisher/
-   ├─ SKILL.md                         面向 Agent 的指令
-   ├─ references/
-   │  ├─ standards.md                  依据来源清单（规则 ↔ 引用 映射）
-   │  ├─ checks.md                     检查项目录（规则 ID / 严重级别）
-   │  ├─ interaction.md                决策分级（必问/确认/默认/红线）
-   │  ├─ templates.md                  文档模板集
-   │  ├─ commit-convention.md          提交规范
-   │  └─ commit-convention.en.md       Commit convention (English)
-   └─ scripts/                         Python 纯标准库脚本
+   ├─ SKILL.md                          入口指令：Agent 读这一份
+   ├─ references/                       ── 规范层：什么必须成立
+   │  ├─ README.md                      本目录索引：三层结构与阅读顺序
+   │  ├─ checks.md                      判定标准：规则 ID / 严重级别 / 由谁执行
+   │  ├─ commit-convention.md           判定标准：提交规范
+   │  ├─ commit-convention.en.md        Commit convention (English)
+   │  ├─ standards.md                   依据：规则 ↔ 一手来源 映射
+   │  ├─ interaction.md                 操作：决策分级（必问/确认/默认/红线）
+   │  └─ templates.md                   操作：文档模板集
+   └─ scripts/                          ── 执行层：确定、留痕、不泄露
+      ├─ README.md                      脚本用法、参数与退出码
+      ├─ scan_secrets.py                敏感信息扫描（四个扫描面）
+      ├─ check_identity.py              提交身份核验
+      ├─ make_checksums.py              SHA256 校验和
+      ├─ audit_repo.py                  汇总审计与报告
+      ├─ selftest.py                    自测
+      └─ _common.py                     共享常量与工具
 ```
 
 ## 12. 依据来源

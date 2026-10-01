@@ -177,6 +177,32 @@ Only an **explicit publish instruction** leads to a private repository being cre
 
 **Why two gates**: the first blocks the *upload*, the second blocks the *publication*. The private repository is itself a third layer — even if every earlier check missed something, the content stays inside your account.
 
+### 5.1 How it works: three layers, five steps
+
+The work itself is five steps. What makes the project read as heavy is the bookkeeping that proves each step actually happened:
+
+```text
+① scan    → establish facts (credentials, identity, checksums)
+② grade   → BLOCKER stops; MAJOR is a decision for the human; MINOR/INFO are recorded
+③ report  → includes a list of what was NOT covered
+④ review  → README and release notes, by a human
+⑤ upload  → past two gates; new repositories are private by default
+```
+
+Three layers around it:
+
+| Layer | Location | Responsibility | Executed by |
+|---|---|---|---|
+| **Specification** | `references/` | what must be true, who is responsible, on what authority | the agent reads and follows it |
+| **Execution** | `scripts/` | only the checks that must be deterministic, auditable, and non-leaking | Python, standard library only |
+| **Presentation** | the audit report | results, the surfaces used, and **what could not be covered** | `audit_repo.py` |
+
+**Why specification and execution are separate.** A specification is text a person can read, dispute, and cite; execution is a mechanical action that must give the same answer twice. Merging them produces two bad outcomes: "what must be true" disappears into code where nobody can argue with it, or an agent's judgement replaces a check that was supposed to be deterministic, so the result cannot be reproduced. Which rules the scripts enforce and which rely on judgement is declared rule by rule in section 7 of `references/checks.md` — the specification states its own degree of automation.
+
+**Why the report must list what it could not cover.** A report that says only "passed" and one that says "passed, with 9 items unchecked" mean entirely different things. The first gets read as "safe", and **a passing audit is never evidence that a project is safe**.
+
+The specification layer's own layout and reading order are in [`references/README.md`](.dsh/skills/github-project-publisher/references/README.md).
+
 ## 6. Decision classes
 
 Confusing "what to ask" with "what not to ask" produces two failures at once: silent defaults on questions that matter, and noise on questions that do not. Every decision point is assigned to one of four classes:
@@ -360,6 +386,7 @@ dsh-github-publisher/
 ├─ CHANGELOG.md              Keep a Changelog
 ├─ CONTRIBUTING.md           Includes the commit convention and bilingual sync rule
 ├─ SECURITY.md               Security policy and threat model
+├─ SHA256SUMS                Checksums for the skill bundle
 ├─ .gitignore
 ├─ .gitattributes            Line-ending governance (LF inside the repository)
 ├─ .github/
@@ -370,15 +397,23 @@ dsh-github-publisher/
 ├─ .github-upload-audit/
 │  └─ allowlist.txt          Exemption list (reports are ignored; this file is tracked)
 └─ .dsh/skills/github-project-publisher/
-   ├─ SKILL.md                         Agent-facing instructions
-   ├─ references/
-   │  ├─ standards.md                  Citation list (rule ↔ source mapping)
-   │  ├─ checks.md                     Check catalog (rule IDs, severities)
-   │  ├─ interaction.md                Decision classes
-   │  ├─ templates.md                  Document templates
-   │  ├─ commit-convention.md          Commit convention (中文)
-   │  └─ commit-convention.en.md       Commit convention (English)
-   └─ scripts/                         Standard-library-only Python
+   ├─ SKILL.md                          Entry point: the file the agent reads
+   ├─ references/                       ── specification: what must be true
+   │  ├─ README.md                      Index for this directory: layers and reading order
+   │  ├─ checks.md                      Criteria: rule IDs, severities, who executes them
+   │  ├─ commit-convention.md           Criteria: commit convention (中文)
+   │  ├─ commit-convention.en.md        Criteria: commit convention (English)
+   │  ├─ standards.md                   Authority: rule ↔ primary-source mapping
+   │  ├─ interaction.md                 Operation: decision classes
+   │  └─ templates.md                   Operation: document templates
+   └─ scripts/                          ── execution: deterministic, logged, non-leaking
+      ├─ README.md                      Script usage, arguments, exit codes
+      ├─ scan_secrets.py               Sensitive-information scan (four surfaces)
+      ├─ check_identity.py             Commit-identity verification
+      ├─ make_checksums.py             SHA256 checksums
+      ├─ audit_repo.py                 Aggregate audit and report
+      ├─ selftest.py                   Self-test
+      └─ _common.py                    Shared constants and helpers
 ```
 
 ## 12. References
