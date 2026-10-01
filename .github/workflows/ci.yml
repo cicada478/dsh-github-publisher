@@ -51,7 +51,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: 自测
-        run: python .dsh/skills/github-project-publisher/scripts/selftest.py
+        run: python tests/selftest.py
 
       - name: 敏感信息扫描（工作区 + 历史）
         run: |

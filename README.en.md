@@ -358,11 +358,10 @@ All scripts use the **Python standard library only** — a deliberate constraint
 | `scripts/check_identity.py` | Verify author and committer are both noreply; prints a verdict only |
 | `scripts/make_checksums.py` | Generate and verify coreutils-compatible `SHA256SUMS` |
 | `scripts/audit_repo.py` | Aggregate the checks into Markdown and JSON reports |
-| `scripts/selftest.py` | Self-test; runs entirely in temporary directories |
 
 ```powershell
 # self-test
-python .\.dsh\skills\github-project-publisher\scripts\selftest.py
+python .\tests\selftest.py
 
 # scan the current project
 python .\.dsh\skills\github-project-publisher\scripts\scan_secrets.py --worktree --history
@@ -396,6 +395,8 @@ dsh-github-publisher/
 │  └─ dependabot.yml
 ├─ .github-upload-audit/
 │  └─ allowlist.txt          Exemption list (reports are ignored; this file is tracked)
+├─ tests/
+│  └─ selftest.py            Self-test (moved out of the skill bundle in 1.0.0: development-only, not distributed)
 └─ .dsh/skills/github-project-publisher/
    ├─ SKILL.md                          Entry point: the file the agent reads
    ├─ references/                       ── specification: what must be true
@@ -412,7 +413,6 @@ dsh-github-publisher/
       ├─ check_identity.py             Commit-identity verification
       ├─ make_checksums.py             SHA256 checksums
       ├─ audit_repo.py                 Aggregate audit and report
-      ├─ selftest.py                   Self-test
       └─ _common.py                    Shared constants and helpers
 ```
 

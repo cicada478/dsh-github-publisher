@@ -358,11 +358,10 @@ python .\.dsh\skills\github-project-publisher\scripts\make_checksums.py dist\* -
 | `scripts/check_identity.py` | 核验 author 与 committer 是否均为 noreply 地址（只输出判定） |
 | `scripts/make_checksums.py` | 生成与验证 coreutils 兼容的 `SHA256SUMS` |
 | `scripts/audit_repo.py` | 汇总检查并输出审计报告（Markdown + JSON） |
-| `scripts/selftest.py` | 自测，在临时目录中运行，不触碰真实仓库状态 |
 
 ```powershell
 # 自测
-python .\.dsh\skills\github-project-publisher\scripts\selftest.py
+python .\tests\selftest.py
 
 # 扫描当前项目
 python .\.dsh\skills\github-project-publisher\scripts\scan_secrets.py --worktree --history
@@ -396,6 +395,8 @@ dsh-github-publisher/
 │  └─ dependabot.yml
 ├─ .github-upload-audit/
 │  └─ allowlist.txt          豁免清单（报告不入库，本文件入库）
+├─ tests/
+│  └─ selftest.py            自测（1.0.0 起移出 skill bundle：开发用，不随 skill 分发）
 └─ .dsh/skills/github-project-publisher/
    ├─ SKILL.md                          入口指令：Agent 读这一份
    ├─ references/                       ── 规范层：什么必须成立
@@ -412,7 +413,6 @@ dsh-github-publisher/
       ├─ check_identity.py              提交身份核验
       ├─ make_checksums.py              SHA256 校验和
       ├─ audit_repo.py                  汇总审计与报告
-      ├─ selftest.py                    自测
       └─ _common.py                     共享常量与工具
 ```
 

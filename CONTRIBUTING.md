@@ -35,7 +35,7 @@
 python --version
 # 需 3.9 或更高版本
 
-python .\.dsh\skills\github-project-publisher\scripts\selftest.py
+python .\tests\selftest.py
 ```
 
 脚本**只使用 Python 标准库**，这是刻意约束而非偷懒：一个审计工具如果自身需要安装依赖才能运行，就无法在被审计的受限环境中被信任地执行。请勿为此引入 pip 依赖。
@@ -57,7 +57,7 @@ open(path, "w", encoding="utf-8", newline="\n")
 ## 提交前自检
 
 ```powershell
-python .\.dsh\skills\github-project-publisher\scripts\selftest.py
+python .\tests\selftest.py
 python .\.dsh\skills\github-project-publisher\scripts\scan_secrets.py --worktree
 ```
 

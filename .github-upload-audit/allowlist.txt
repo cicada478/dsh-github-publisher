@@ -1,7 +1,7 @@
 # ---------------------------------------------------------------------------
 # 敏感信息扫描豁免清单 —— **宿主项目自己的**豁免
 #
-# 当前状态：**无生效条目。**
+# 当前状态：**7 条生效条目**（全部为 `tests/selftest.py` 的伪造样本）。
 #
 # 为什么是空的
 # ------------
@@ -47,5 +47,27 @@
 # 依据：references/checks.md 第 4 节
 # ---------------------------------------------------------------------------
 
+# ---- 本仓库自测的伪造样本（tests/selftest.py）------------------------------
+# 自 1.0.0 起自测位于仓库根的 tests/，**不再随 skill 分发**，因此它属于本仓库
+# 自己的文件，其豁免也归本清单——这正是两份清单的分工。
+SEC-001  tests/selftest.py  *  -- 本仓库自测构造的伪造 AWS/Slack/Azure 密钥样本
+SEC-002  tests/selftest.py  *  -- 本仓库自测构造的伪造私钥样本，以及自扫描判据测试中引用的私钥规则字面量
+SEC-003  tests/selftest.py  *  -- 本仓库自测构造的伪造口令样本
+SEC-004  tests/selftest.py  *  -- 本仓库自测构造的伪造数据库连接串样本
+SEC-005  tests/selftest.py  *  -- 本仓库自测构造的伪造卡号与 IBAN，仅校验位合法
+SEC-006  tests/selftest.py  *  -- 本仓库自测构造的虚构邮箱、身份证号与手机号
+SEC-008  tests/selftest.py  *  -- 本仓库自测构造的「敏感值写入日志」样本
+
+
+# ---- 历史中的旧路径（1.0.0 之前自测位于 skill 的 scripts/ 下）----------------
+# git 历史仍保留那个版本，历史扫描会照常命中，因此这里必须一并覆盖——
+# **豁免清单要覆盖全部扫描面，而不只是工作区**。
+SEC-001  .dsh/skills/github-project-publisher/scripts/selftest.py  *  -- 1.0.0 前位于 skill 内的自测夹具，伪造 AWS/Slack/Azure 密钥样本（仅存于本仓库历史）
+SEC-002  .dsh/skills/github-project-publisher/scripts/selftest.py  *  -- 1.0.0 前位于 skill 内的自测夹具，伪造私钥样本（仅存于本仓库历史）
+SEC-003  .dsh/skills/github-project-publisher/scripts/selftest.py  *  -- 1.0.0 前位于 skill 内的自测夹具，伪造口令样本（仅存于本仓库历史）
+SEC-004  .dsh/skills/github-project-publisher/scripts/selftest.py  *  -- 1.0.0 前位于 skill 内的自测夹具，伪造连接串样本（仅存于本仓库历史）
+SEC-005  .dsh/skills/github-project-publisher/scripts/selftest.py  *  -- 1.0.0 前位于 skill 内的自测夹具，伪造卡号与 IBAN（仅存于本仓库历史）
+SEC-006  .dsh/skills/github-project-publisher/scripts/selftest.py  *  -- 1.0.0 前位于 skill 内的自测夹具，虚构邮箱与身份证号（仅存于本仓库历史）
+SEC-008  .dsh/skills/github-project-publisher/scripts/selftest.py  *  -- 1.0.0 前位于 skill 内的自测夹具，「敏感值写入日志」样本（仅存于本仓库历史）
 # 示例（当前未启用，仅示意格式）：
 # SEC-001  docs/deployment.md  42  -- 文档示例中的占位密钥，非真实凭据

@@ -172,7 +172,7 @@ email@example.com   test@example.com     noreply@example.com
 
 | 文件 | 实际命中 | 按文件名豁免的后果 |
 |---|---|---|
-| `selftest.py` | **约 110 条**伪造样本 | 全部被静默吞掉 |
+| `tests/selftest.py` | **约 110 条**伪造样本 | 全部被静默吞掉 |
 | `_common.py` | **0 条** | 豁免纯属多余 |
 | `audit_repo.py` | **0 条** | 豁免纯属多余 |
 | `scan_secrets.py` | 6 条正则字面量 | 这 6 条确实该豁免 |

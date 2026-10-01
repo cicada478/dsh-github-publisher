@@ -31,16 +31,6 @@
 #   要消除这一点需要按内容指纹豁免（类似 .gitleaksignore 的做法），属于后续改进。
 # ---------------------------------------------------------------------------
 
-# ---- 自测夹具：为验证每条规则能命中而构造的伪造样本 --------------------------
-# 全部为伪造值：卡号与 IBAN 仅满足校验位算法，其余为随意构造的字符串，
-# 不对应任何真实账号、密钥或个人信息。
-SEC-001  */github-project-publisher/scripts/selftest.py  *  -- skill 自测构造的伪造 AWS/Slack/Azure 密钥样本
-SEC-002  */github-project-publisher/scripts/selftest.py  *  -- skill 自测构造的伪造私钥样本，以及自扫描判据测试中引用的私钥规则字面量
-SEC-003  */github-project-publisher/scripts/selftest.py  *  -- skill 自测构造的伪造口令样本
-SEC-004  */github-project-publisher/scripts/selftest.py  *  -- skill 自测构造的伪造数据库连接串样本
-SEC-005  */github-project-publisher/scripts/selftest.py  *  -- skill 自测构造的伪造卡号与 IBAN，仅校验位合法
-SEC-006  */github-project-publisher/scripts/selftest.py  *  -- skill 自测构造的虚构邮箱、身份证号与手机号
-SEC-008  */github-project-publisher/scripts/selftest.py  *  -- skill 自测构造的「敏感值写入日志」样本
 
 # ---- 规则定义：正则表达式自身的字面量，不是密钥 ------------------------------
 SEC-002  */github-project-publisher/scripts/scan_secrets.py  *  -- skill 私钥规则的匹配字面量（PEM 头尾标记），是规则而非密钥

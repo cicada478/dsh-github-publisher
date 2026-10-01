@@ -15,9 +15,9 @@
 
 用法::
 
-    python selftest.py
-    python selftest.py --verbose
-    python selftest.py --only mask
+    python tests/selftest.py
+    python tests/selftest.py --verbose
+    python tests/selftest.py --only mask
 """
 
 from __future__ import annotations
@@ -37,7 +37,19 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 from typing import Callable, Dict, List, Optional, Sequence, Tuple
 
-SCRIPTS_DIR = Path(__file__).resolve().parent
+# 本文件位于 <仓库根>/tests/，被测试的脚本在 <仓库根>/.dsh/skills/<name>/scripts/。
+#
+# 自 1.0.0 起自测**不再随 skill 分发**：它是开发用基础设施，skill 的使用者不会
+# 运行它；而它携带的大量伪造样本会迫使每一个安装本 skill 的仓库去写豁免。
+# 因此这里必须自己定位脚本目录，不能再依赖 __file__ 的父目录。
+_REPO_ROOT = Path(__file__).resolve().parent.parent
+SCRIPTS_DIR = _REPO_ROOT / ".dsh" / "skills" / "github-project-publisher" / "scripts"
+if not (SCRIPTS_DIR / "_common.py").is_file():
+    sys.stderr.write(
+        "找不到被测试的脚本目录：{0}\n"
+        "本文件应当位于 <仓库根>/tests/ 下。\n".format(SCRIPTS_DIR)
+    )
+    raise SystemExit(2)
 if str(SCRIPTS_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPTS_DIR))
 
@@ -800,30 +812,36 @@ def test_skill_carries_its_own_allowlist(sandbox: Path) -> None:
     empty_repo.mkdir()
     allowlist = _common.load_allowlist(empty_repo)
 
-    # skill 自身文件 → 由 skill 那份清单豁免，且标明来源与理由
-    skill_rel = ".dsh/skills/github-project-publisher/scripts/selftest.py"
-    rule = allowlist.lookup("SEC-001", skill_rel, 12345)
-    check(rule is not None, "skill 自带清单应能豁免 skill 自身文件")
+    # skill 自身文件 → 由 skill 那份清单豁免，且标明来源与理由。
+    # 自 1.0.0 起只剩**规则定义文件**需要它：自测已移出 skill bundle。
+    rule_file = ".dsh/skills/github-project-publisher/scripts/scan_secrets.py"
+    rule = allowlist.lookup("SEC-002", rule_file, 513)
+    check(rule is not None, "skill 自带清单应能豁免 skill 自身的规则定义文件")
     if rule is not None:
         check_eq(getattr(rule, "origin", ""), "skill", "来源应标为 skill")
         check(bool(rule.reason.strip()), "豁免条目必须带理由")
 
+    # 自测移出后，skill 清单**不应**再覆盖 selftest.py——这正是本次简化的目的：
+    # 让每一个安装本 skill 的仓库都不必为别人的测试夹具写豁免。
     check(
-        allowlist.lookup("SEC-002", skill_rel, 1) is not None,
-        "skill 自带清单应覆盖多条规则",
+        allowlist.lookup(
+            "SEC-001", ".dsh/skills/github-project-publisher/scripts/selftest.py", 10
+        )
+        is None,
+        "自测已移出 skill bundle，skill 清单不应再豁免它",
     )
 
     # 关键：它不得放过**别的**路径，否则又退化成整份豁免式的盲区
     check(
-        allowlist.lookup("SEC-001", "src/config.py", 10) is None,
+        allowlist.lookup("SEC-002", "src/config.py", 10) is None,
         "skill 自带清单不得豁免非 skill 路径",
     )
     check(
-        allowlist.lookup("SEC-001", "scripts/selftest.py", 10) is None,
+        allowlist.lookup("SEC-002", "scripts/scan_secrets.py", 10) is None,
         "同名但不在 skill 目录下的文件不得被豁免",
     )
     check(
-        allowlist.lookup("SEC-007", skill_rel, 10) is None,
+        allowlist.lookup("SEC-007", rule_file, 10) is None,
         "未登记的规则不得被顺手豁免",
     )
 

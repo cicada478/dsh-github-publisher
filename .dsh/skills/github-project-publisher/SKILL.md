@@ -175,7 +175,6 @@ Resolve paths relative to this skill's base directory, which the `skill` tool re
 | `scripts/scan_secrets.py` | Secret and PII scan across four surfaces |
 | `scripts/check_identity.py` | Noreply identity verdict; prints no addresses |
 | `scripts/make_checksums.py` | Generate and verify coreutils-compatible `SHA256SUMS` |
-| `scripts/selftest.py` | Self-test; runs in temporary directories |
 
 They use the Python standard library only. Do not install packages for them.
 
@@ -190,7 +189,7 @@ They use the Python standard library only. Do not install packages for them.
 
 Use the first that reports 3.9 or newer, and use that same interpreter for every script in the run. **If none qualifies, say so and stop.** Do not attempt a partial run, and never read "the command produced no output" as a pass.
 
-Arguments, exit codes, and worked examples for each: `scripts/README.md`.
+Arguments, exit codes, and worked examples for each: `scripts/README.md`. The self-test is **not** part of the bundle — it lives in this repository under `tests/`, because it is development infrastructure and its fabricated fixtures would otherwise force every project that installs the skill to write exemptions for them.
 
 **Exit codes are uniform across every script**: `0` the check passed, `1` the check ran and did not pass, `2` the check could not run at all. Keep `2` distinct from `1` when you report — "the project was checked and failed" and "the check never happened" are different statements, and collapsing them turns an unrun check into an apparent pass.
 

@@ -22,7 +22,6 @@
 | [`check_identity.py`](#check_identitypy) | 核验 author 与 committer 是否均为 noreply | 0 通过 / 1 不通过 / 2 执行错误 |
 | [`make_checksums.py`](#make_checksumspy) | 生成与校验 coreutils 兼容的 SHA256SUMS | 0 成功 / 1 校验失败 / 2 用法错误 |
 | [`audit_repo.py`](#audit_repopy) | 聚合审计并输出报告 | 0 无 BLOCKER / 1 有 BLOCKER / 2 执行错误 |
-| [`selftest.py`](#selftestpy) | 脚本层自检（72 个用例） | 0 全通过 / 1 有失败 / 2 用法错误 |
 | `_common.py` | 共享层：脱敏、占位符识别、豁免清单解析、Finding 模型 | — |
 | `_normalize_eol.py` | 一次性维护工具：把本目录的文本文件归一化为 UTF-8 无 BOM + LF | 0 |
 
@@ -182,16 +181,16 @@ python .\audit_repo.py --repo C:\path\proj
 
 ---
 
-## selftest.py
+## 自测（1.0.0 起已移出 scripts/）
 
 脚本层自检，72 个用例，不依赖 pytest。
 
 ```powershell
-python .\selftest.py
-python .\selftest.py --list          # 列出全部用例名
-python .\selftest.py --only mask     # 只跑名字含 "mask" 的用例
-python .\selftest.py --verbose       # 保留临时目录便于排查
-python .\selftest.py --force-failure # 自检的自检
+python ..\tests\selftest.py
+python ..\tests\selftest.py --list          # 列出全部用例名
+python ..\tests\selftest.py --only mask     # 只跑名字含 "mask" 的用例
+python ..\tests\selftest.py --verbose       # 保留临时目录便于排查
+python ..\tests\selftest.py --force-failure # 自检的自检
 ```
 
 ### `--force-failure` 为什么存在

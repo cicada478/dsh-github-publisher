@@ -28,7 +28,7 @@
 - 交互决策分级 `references/interaction.md`：区分必问、二次确认、默认执行与红线四类
 - 文档模板集 `references/templates.md`：README、CHANGELOG、Release 文案、审计报告
 - Python 脚本（纯标准库，零依赖）：敏感信息扫描、noreply 身份核验、SHA256 校验和生成、仓库审计汇总
-- 脚本自测 `scripts/selftest.py`，在临时目录中运行，不触碰真实仓库状态
+- 脚本自测 `tests/selftest.py`（1.0.0 起位于仓库根，不随 skill 分发），在临时目录中运行，不触碰真实仓库状态
 - 检查项 `GIT-005`：探测「已被跟踪、又匹配 `.gitignore`」的文件。忽略规则对这类文件完全无效，而它的存在会制造"已经安全了"的错觉——这比不写 `.gitignore` 更危险。实现方式为 `git ls-files --cached --ignored --exclude-standard`
 - 检查项 `GIT-004`：探测历史中的超大文件。超过 50 MB 为 MINOR（推送时警告、仓库体积永久变大），超过 100 MB 覆盖为 MAJOR（GitHub 会直接拒收推送）。实现方式为 `git rev-list --objects --all` 配合 `git cat-file --batch-check` 的一次批量查询；可用 `--no-large-files` 跳过，跳过时记入未覆盖清单
 - 控制台摘要现在会显示「未能覆盖」条目。此前这类信息只写进 Markdown 报告，而 `--dry-run` 不写报告——于是覆盖缺口在最容易被用来"快速看一眼"的模式下完全不可见，容易把"没检查"误读成"检查通过"
@@ -50,7 +50,12 @@
 - `SHA256SUMS` 以 UTF-8 无 BOM、LF 行尾写入，确保 Linux 侧 `sha256sum -c` 可用
 - 新建仓库默认私有：先完成上传与完整检查，再人工决定是否公开
 
+### Changed
+
+- **把自测移出 skill bundle**：`scripts/selftest.py` → `tests/selftest.py`。它是**开发用基础设施**，skill 的使用者不会运行它；而它携带的约 110 条伪造样本会迫使**每一个**安装本 skill 的仓库去写豁免。移出后 skill 包体量减少约 28%（脚本 6876 → 约 4930 行），且 skill 自带的豁免清单从 8 条缩到 1 条（只剩 `scan_secrets.py` 的规则字面量）。自测能力不受影响：仓库的 CI 与本地仍完整运行它（80 个用例）。代价：安装后的副本不再能自证——验证能力只在仓库里。
+
 ### Fixed
+
 
 - **修正"项目级安装会把误报带给宿主项目"**：收窄自扫描判据后只剩宿主项目的豁免清单生效，于是把本 skill **项目级安装**进任何仓库，那个仓库都会收到 **57 条 BLOCKER** 误报（`selftest.py` 54 条、`scan_secrets.py` 3 条），而它并没有做错任何事、也没有立场替别人的文件写豁免。现改为**两份清单合并生效**：宿主项目的 `.github-upload-audit/allowlist.txt` 与 skill 目录内的 `skill-allowlist.txt`。两份格式与「理由必填」要求完全相同，报告逐条标明来源（`[skill]` / `[项目]`）。实测宿主项目已降为 **0 条**，且 skill 自带清单**不会**放过非 skill 路径——有回归用例守住这一点
 - **修正一个危险的清理缺陷**：自测在系统临时区策略下会**删除整个系统临时目录**——`_cleanup_work_dir` 无条件执行 `force_rmtree(root.parent)`，而该策略下 `root` 就是 `<TEMP>/gpp-selftest-XXXX`，其父目录即 `<TEMP>` 本身。实测中它删掉了会话的临时目录，导致此后所有受限沙箱命令都因"临时目录不存在"被拒绝。现只在父目录确实是我们自己的 `.selftest-tmp` 时才一并收掉
