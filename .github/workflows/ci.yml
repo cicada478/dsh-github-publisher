@@ -39,14 +39,14 @@ jobs:
 
     steps:
       - name: 检出（需完整历史）
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           # 敏感信息历史扫描与提交身份核验都需要完整历史，
           # 默认的浅克隆会让这两项检查静默失效。
           fetch-depth: 0
 
       - name: 配置 Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python-version }}
 
@@ -67,10 +67,10 @@ jobs:
 
     steps:
       - name: 检出
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: 配置 Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v7
         with:
           python-version: '3.13'
 
